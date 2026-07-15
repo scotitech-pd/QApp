@@ -28,21 +28,22 @@ function IconHome() {
   );
 }
 
-function IconQueue() {
+function IconNearby() {
   return (
     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden {...strokeProps}>
-      <path d="M5 7h14M5 12h14M5 17h9" />
-      <circle cx="19.5" cy="17" r="1.5" fill="currentColor" stroke="none" />
+      <path d="M12 21s7-6.5 7-11a7 7 0 1 0-14 0c0 4.5 7 11 7 11Z" />
+      <circle cx="12" cy="10" r="2.5" />
     </svg>
   );
 }
 
-function IconShop() {
+function IconDashboard() {
   return (
     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden {...strokeProps}>
-      <path d="M4 8h16l-1 4a2 2 0 0 1-2 1.5H7A2 2 0 0 1 5 12L4 8Z" />
-      <path d="M4 8V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2" />
-      <path d="M6 13.5V20h12v-6.5" />
+      <rect x="4" y="4" width="7" height="7" rx="1.5" />
+      <rect x="13" y="4" width="7" height="4" rx="1.5" />
+      <rect x="13" y="10" width="7" height="10" rx="1.5" />
+      <rect x="4" y="13" width="7" height="7" rx="1.5" />
     </svg>
   );
 }
@@ -50,7 +51,9 @@ function IconShop() {
 function IconRegister() {
   return (
     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden {...strokeProps}>
-      <path d="M12 5v14M5 12h14" />
+      <path d="M4 8h16l-1 4a2 2 0 0 1-2 1.5H7A2 2 0 0 1 5 12L4 8Z" />
+      <path d="M4 8V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2" />
+      <path d="M12 13v6M9 16h6" />
     </svg>
   );
 }
@@ -64,6 +67,14 @@ function IconShield() {
   );
 }
 
+const OWNER_ROUTE_PREFIXES = ["/signin", "/shop/", "/shop", "/business/", "/admin/", "/ops/", "/portal", "/lab"];
+
+function isOwnerRoute(pathname: string) {
+  return OWNER_ROUTE_PREFIXES.some(
+    (prefix) => pathname === prefix.replace(/\/$/, "") || pathname.startsWith(prefix)
+  );
+}
+
 function NavLink({
   href,
   label,
@@ -71,7 +82,9 @@ function NavLink({
   currentPath,
   variant
 }: NavItem & { currentPath: string; variant: "top" | "tab" }) {
-  const isActive = currentPath === href || (href !== "/" && currentPath.startsWith(href));
+  const isActive =
+    currentPath === href ||
+    (href !== "/" && currentPath.startsWith(href));
 
   if (variant === "tab") {
     return (
@@ -93,26 +106,35 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { busy, isAuthenticated, logoutCurrent, user, hasPlatformAdminAccess } = useAuth();
 
-  const primaryLinks: NavItem[] = [
+  const ownerContext = isOwnerRoute(pathname);
+
+  const customerNav: NavItem[] = [
     { href: "/", label: "Home", icon: <IconHome /> },
-    { href: "/shops", label: "Queues", icon: <IconQueue /> },
-    { href: "/shop/dashboard", label: "Shop", icon: <IconShop /> },
+    { href: "/shops", label: "Nearby", icon: <IconNearby /> }
+  ];
+
+  const ownerNav: NavItem[] = [
+    { href: "/shop/dashboard", label: "Dashboard", icon: <IconDashboard /> },
     { href: "/business/signup", label: "Register", icon: <IconRegister /> }
   ];
 
   if (hasPlatformAdminAccess) {
-    primaryLinks.push({ href: "/admin/business-signups", label: "Admin", icon: <IconShield /> });
+    ownerNav.push({ href: "/admin/business-signups", label: "Admin", icon: <IconShield /> });
   }
 
+  const primaryLinks = ownerContext ? ownerNav : customerNav;
+
+  const brandTagline = ownerContext ? "Shop Owner Portal" : "Skip the wait";
+
   return (
-    <div className="app-frame">
+    <div className={`app-frame ${ownerContext ? "app-frame-owner" : "app-frame-customer"}`}>
       <header className="app-header">
         <div className="app-header-row">
-          <Link className="brand-lockup" href="/">
+          <Link className="brand-lockup" href={ownerContext ? "/shop/dashboard" : "/"}>
             <span className="brand-mark">Q</span>
             <span className="brand-text">
               <strong>Q-App</strong>
-              <small>Queue and smart arrival</small>
+              <small>{brandTagline}</small>
             </span>
           </Link>
 
@@ -132,9 +154,13 @@ export function AppChrome({ children }: { children: ReactNode }) {
                   {busy ? "..." : "Sign Out"}
                 </button>
               </>
-            ) : (
+            ) : ownerContext ? (
               <Link className="button small" href="/signin">
                 Sign In
+              </Link>
+            ) : (
+              <Link className="button small ghost" href="/signin">
+                For Shops
               </Link>
             )}
           </div>
@@ -157,7 +183,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       <main className="app-content">{children}</main>
 
       <nav className="bottom-nav" aria-label="Mobile">
-        {primaryLinks.slice(0, 5).map((item) => (
+        {primaryLinks.map((item) => (
           <NavLink
             currentPath={pathname}
             href={item.href}

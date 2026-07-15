@@ -119,6 +119,7 @@ export function BusinessSignupForm() {
   const [formState, setFormState] = useState<SignupState>(defaultState);
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [locationStatus, setLocationStatus] = useState("No location selected yet.");
+  const [showAddress, setShowAddress] = useState(false);
   const [pinConfirmedAt, setPinConfirmedAt] = useState<string | null>(null);
   const [mapsReady, setMapsReady] = useState(false);
   const [mapsError, setMapsError] = useState<string | null>(null);
@@ -430,42 +431,6 @@ export function BusinessSignupForm() {
               onChange={(event) => updateField("passwordConfirm", event.target.value)}
             />
           </label>
-          <label className="field field-wide">
-            <span>Address Line 1</span>
-            <input
-              required
-              value={formState.addressLine1}
-              onChange={(event) => updateField("addressLine1", event.target.value)}
-            />
-          </label>
-          <label className="field field-wide">
-            <span>Address Line 2</span>
-            <input
-              value={formState.addressLine2}
-              onChange={(event) => updateField("addressLine2", event.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>City</span>
-            <input required value={formState.city} onChange={(event) => updateField("city", event.target.value)} />
-          </label>
-          <label className="field">
-            <span>Region</span>
-            <input value={formState.region} onChange={(event) => updateField("region", event.target.value)} />
-          </label>
-          <label className="field">
-            <span>Postal Code</span>
-            <input value={formState.postalCode} onChange={(event) => updateField("postalCode", event.target.value)} />
-          </label>
-          <label className="field">
-            <span>Country Code</span>
-            <input
-              required
-              maxLength={2}
-              value={formState.countryCode}
-              onChange={(event) => updateField("countryCode", event.target.value.toUpperCase())}
-            />
-          </label>
           <label className="field">
             <span>Industry</span>
             <select
@@ -582,6 +547,53 @@ export function BusinessSignupForm() {
             </span>
           </div>
         </div>
+
+        <details
+          className="disclosure"
+          open={showAddress}
+          onToggle={(event) => setShowAddress((event.target as HTMLDetailsElement).open)}
+        >
+          <summary>
+            <span>Address details (optional)</span>
+            <small>Shown to customers. Not needed if the map pin is right.</small>
+          </summary>
+          <div className="signup-grid" style={{ marginTop: 16 }}>
+            <label className="field field-wide">
+              <span>Address Line 1</span>
+              <input
+                value={formState.addressLine1}
+                onChange={(event) => updateField("addressLine1", event.target.value)}
+              />
+            </label>
+            <label className="field field-wide">
+              <span>Address Line 2</span>
+              <input
+                value={formState.addressLine2}
+                onChange={(event) => updateField("addressLine2", event.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span>City</span>
+              <input value={formState.city} onChange={(event) => updateField("city", event.target.value)} />
+            </label>
+            <label className="field">
+              <span>Region</span>
+              <input value={formState.region} onChange={(event) => updateField("region", event.target.value)} />
+            </label>
+            <label className="field">
+              <span>Postal Code</span>
+              <input value={formState.postalCode} onChange={(event) => updateField("postalCode", event.target.value)} />
+            </label>
+            <label className="field">
+              <span>Country Code</span>
+              <input
+                maxLength={2}
+                value={formState.countryCode}
+                onChange={(event) => updateField("countryCode", event.target.value.toUpperCase())}
+              />
+            </label>
+          </div>
+        </details>
 
         {submitError ? <p className="status-text warning">{submitError}</p> : null}
 
