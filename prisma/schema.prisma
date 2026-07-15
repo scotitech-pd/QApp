@@ -1,0 +1,833 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum IndustryType {
+  BARBER
+  SALON
+  BEAUTY_CLINIC
+  NAIL_STUDIO
+  TATTOO_STUDIO
+  CAR_WASH
+  VEHICLE_SERVICE_CENTRE
+  PHYSIOTHERAPY_CLINIC
+  DENTAL_CLINIC
+  OTHER
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum LocationStatus {
+  DRAFT
+  LIVE
+  PAUSED
+  SUSPENDED
+}
+
+enum MembershipRole {
+  OWNER
+  MANAGER
+  STAFF_OPERATOR
+  ADMIN_SUPPORT
+}
+
+enum AppRole {
+  USER
+  PLATFORM_ADMIN
+}
+
+enum AuthEventType {
+  LOGIN_SUCCEEDED
+  LOGIN_FAILED
+  REFRESH_SUCCEEDED
+  REFRESH_FAILED
+  LOGOUT_REFRESH_TOKEN
+  LOGOUT_CURRENT
+  LOGOUT_OTHER_SESSIONS
+  SESSION_REVOKED
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  INVITATION_CREATED
+  INVITATION_ACCEPTED
+  ADMIN_UNLOCKED_ACCOUNT
+  ADMIN_REVOKED_ALL_SESSIONS
+  ADMIN_FORCED_PASSWORD_RESET
+  ADMIN_SECURITY_CASE_CREATED
+  ADMIN_SECURITY_CASE_NOTE_ADDED
+  ADMIN_SECURITY_CASE_RESOLVED
+  ADMIN_SECURITY_CASE_REOPENED
+  ADMIN_SECURITY_ALERT_ACKNOWLEDGED
+  ADMIN_SECURITY_ALERT_RESOLVED
+  ADMIN_SECURITY_ALERT_CASE_CREATED
+}
+
+enum SecurityCaseStatus {
+  OPEN
+  MONITORING
+  RESOLVED
+}
+
+enum SecurityCaseSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum SecurityAlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum SecurityAlertType {
+  REPEATED_LOGIN_FAILURES
+  ACCOUNT_LOCKED
+  NEW_DEVICE_LOGIN
+}
+
+enum VisitSource {
+  REMOTE_QUEUE
+  IN_STORE_QUEUE
+  WALK_IN
+  BOOKING
+}
+
+enum VisitStatus {
+  QUEUED
+  CONFIRMATION_PENDING
+  CALLED
+  READY
+  IN_SERVICE
+  COMPLETED
+  MISSED
+  CANCELLED
+  NO_SHOW
+}
+
+enum ArrivalResponseStatus {
+  PENDING
+  COMING
+  DECLINED
+  EXPIRED
+}
+
+enum ReservationStatus {
+  HOLD
+  PENDING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  NO_SHOW
+  COMPLETED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  WAIVED
+}
+
+enum NotificationChannel {
+  SMS
+  WHATSAPP
+  EMAIL
+  WEB_PUSH
+  IN_APP
+}
+
+enum NotificationType {
+  QUEUE_JOINED
+  POSITION_CHANGED
+  ETA_CHANGED
+  NEAR_TURN
+  ARRIVAL_CONFIRMATION
+  CALLED_NOW
+  MISSED_TURN
+  BOOKING_CONFIRMED
+  BOOKING_REMINDER
+  DELAY_UPDATE
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  READ
+  RESPONDED
+}
+
+enum ServiceAdjustmentType {
+  PREDEFINED
+  FREE_TEXT
+  WALK_IN_DURATION
+  MANUAL_OVERRIDE
+}
+
+enum OperationalEventType {
+  BUSINESS_APPROVED
+  QUEUE_JOINED
+  QUEUE_LEFT
+  QUEUE_REORDERED
+  WALK_IN_ADDED
+  ARRIVAL_CONFIRMATION_SENT
+  ARRIVAL_CONFIRMED
+  ARRIVAL_DECLINED
+  ARRIVAL_EXPIRED
+  CUSTOMER_CALLED
+  SERVICE_STARTED
+  SERVICE_EXTENDED
+  SERVICE_COMPLETED
+  BOOKING_CREATED
+  BOOKING_CANCELLED
+  SLOT_RELEASED
+  QUEUE_PAUSED
+  QUEUE_RESUMED
+}
+
+enum VerificationPurpose {
+  CUSTOMER_QUEUE_JOIN
+  BUSINESS_SIGNUP
+  STAFF_INVITE
+  LOGIN
+}
+
+enum VerificationChannel {
+  SMS
+  WHATSAPP
+  EMAIL
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  EXPIRED
+  FAILED
+  CANCELLED
+}
+
+enum GeolocationSource {
+  BROWSER_GPS
+  ADDRESS_GEOCODE
+  MANUAL_PIN
+}
+
+model User {
+  id                   String                @id @default(uuid())
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  appRole              AppRole               @default(USER)
+  firstName            String
+  lastName             String?
+  email                String?               @unique
+  phone                String?               @unique
+  passwordHash         String?
+  lastLoginAt          DateTime?
+  failedLoginAttempts  Int                   @default(0)
+  lockedUntil          DateTime?
+  memberships          BusinessMembership[]
+  authSessions         AuthSession[]
+  authAuditEvents      AuthAuditEvent[]
+  actedAuthAuditEvents AuthAuditEvent[]      @relation("AuthAuditEventActor")
+  passwordResetTokens  PasswordResetToken[]
+  sentInvitations      BusinessInvitation[]  @relation("InvitationSender")
+  acceptedInvitations  BusinessInvitation[]  @relation("InvitationAcceptedByUser")
+  staffProfiles        StaffMember[]
+  targetedSecurityCases SecurityCase[]       @relation("SecurityCaseTargetUser")
+  createdSecurityCases  SecurityCase[]       @relation("SecurityCaseCreatedByUser")
+  assignedSecurityCases SecurityCase[]       @relation("SecurityCaseAssignedToUser")
+  securityCaseNotes     SecurityCaseNote[]   @relation("SecurityCaseNoteAuthor")
+  targetedSecurityAlerts SecurityAlert[]     @relation("SecurityAlertTargetUser")
+  acknowledgedSecurityAlerts SecurityAlert[] @relation("SecurityAlertAcknowledgedByUser")
+  resolvedSecurityAlerts SecurityAlert[]     @relation("SecurityAlertResolvedByUser")
+  createdEvents        OperationalEvent[]    @relation("EventActor")
+  createdAdjustments   ServiceAdjustment[]   @relation("AdjustmentActor")
+  triggeredNotifications NotificationEvent[] @relation("NotificationTriggerUser")
+  insertedQueueEntries QueueEntry[]          @relation("QueueInsertedByUser")
+  verificationChallenges VerificationChallenge[]
+}
+
+model PasswordResetToken {
+  id          String   @id @default(uuid())
+  userId      String
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  tokenHash   String   @unique
+  requestedIp String?
+  userAgent   String?
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+}
+
+model AuthSession {
+  id               String    @id @default(uuid())
+  userId           String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  lastUsedAt       DateTime?
+  refreshTokenHash String    @unique
+  userAgent        String?
+  ipAddress        String?
+  deviceName       String?
+  platform         String?
+  user             User      @relation(fields: [userId], references: [id])
+  auditEvents      AuthAuditEvent[]
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model AuthAuditEvent {
+  id         String        @id @default(uuid())
+  userId     String?
+  actorUserId String?
+  sessionId  String?
+  createdAt  DateTime      @default(now())
+  type       AuthEventType
+  identifier String?
+  ipAddress  String?
+  userAgent  String?
+  deviceName String?
+  platform   String?
+  metadata   Json?
+  user       User?         @relation(fields: [userId], references: [id])
+  actorUser  User?         @relation("AuthAuditEventActor", fields: [actorUserId], references: [id])
+  session    AuthSession?  @relation(fields: [sessionId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([identifier, createdAt])
+  @@index([createdAt])
+}
+
+model SecurityCase {
+  id                String               @id @default(uuid())
+  targetUserId      String
+  createdByUserId   String
+  assignedToUserId  String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  resolvedAt        DateTime?
+  title             String
+  summary           String?
+  resolutionSummary String?
+  status            SecurityCaseStatus   @default(OPEN)
+  severity          SecurityCaseSeverity @default(MEDIUM)
+  targetUser        User                 @relation("SecurityCaseTargetUser", fields: [targetUserId], references: [id])
+  createdByUser     User                 @relation("SecurityCaseCreatedByUser", fields: [createdByUserId], references: [id])
+  assignedToUser    User?                @relation("SecurityCaseAssignedToUser", fields: [assignedToUserId], references: [id])
+  notes             SecurityCaseNote[]
+  linkedAlerts      SecurityAlert[]
+
+  @@index([targetUserId, createdAt])
+  @@index([assignedToUserId, status, updatedAt])
+  @@index([status, severity, updatedAt])
+}
+
+model SecurityCaseNote {
+  id             String       @id @default(uuid())
+  securityCaseId String
+  authorUserId   String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  body           String
+  securityCase   SecurityCase @relation(fields: [securityCaseId], references: [id])
+  authorUser     User         @relation("SecurityCaseNoteAuthor", fields: [authorUserId], references: [id])
+
+  @@index([securityCaseId, createdAt])
+}
+
+model SecurityAlert {
+  id               String               @id @default(uuid())
+  targetUserId     String
+  linkedCaseId     String?
+  acknowledgedByUserId String?
+  resolvedByUserId String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  acknowledgedAt   DateTime?
+  resolvedAt       DateTime?
+  type             SecurityAlertType
+  status           SecurityAlertStatus  @default(OPEN)
+  severity         SecurityCaseSeverity @default(MEDIUM)
+  title            String
+  summary          String?
+  resolutionSummary String?
+  metadata         Json?
+  targetUser       User                 @relation("SecurityAlertTargetUser", fields: [targetUserId], references: [id])
+  linkedCase       SecurityCase?        @relation(fields: [linkedCaseId], references: [id])
+  acknowledgedByUser User?              @relation("SecurityAlertAcknowledgedByUser", fields: [acknowledgedByUserId], references: [id])
+  resolvedByUser   User?                @relation("SecurityAlertResolvedByUser", fields: [resolvedByUserId], references: [id])
+
+  @@index([targetUserId, status, createdAt])
+  @@index([type, status, severity, createdAt])
+  @@index([linkedCaseId])
+}
+
+model BusinessGroup {
+  id             String               @id @default(uuid())
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  name           String
+  slug           String               @unique
+  industryType   IndustryType
+  approvalStatus ApprovalStatus       @default(PENDING)
+  notes          String?
+  locations      BusinessLocation[]
+  memberships    BusinessMembership[]
+  invitations    BusinessInvitation[]
+  sourceSignups  BusinessSignup[]
+}
+
+model BusinessLocation {
+  id                    String             @id @default(uuid())
+  businessGroupId       String
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  name                  String
+  slug                  String             @unique
+  status                LocationStatus     @default(DRAFT)
+  isPublic              Boolean            @default(false)
+  publicDescription     String?
+  logoImageUrl          String?
+  coverImageUrl         String?
+  phone                 String?
+  email                 String?
+  timezone              String             @default("Europe/London")
+  addressLine1          String
+  addressLine2          String?
+  city                  String
+  region                String?
+  postalCode            String?
+  countryCode           String             @default("GB")
+  latitude              Float
+  longitude             Float
+  placeId               String?
+  geolocationSource     GeolocationSource?
+  geolocationCapturedAt DateTime?
+  pinConfirmedAt        DateTime?
+  pinAdjustedAt         DateTime?
+  openingHours          Json?
+  queueEnabled          Boolean            @default(true)
+  bookingsEnabled       Boolean            @default(false)
+  queuePaused           Boolean            @default(false)
+  queuePauseReason      String?
+  serviceStationsCount  Int                @default(1)
+  defaultWalkInDurationMin Int            @default(20)
+  nearTurnPositionTrigger Int             @default(2)
+  nearTurnEtaTriggerMin Int               @default(15)
+  calledGracePeriodMin  Int                @default(5)
+  onboardingCompletedAt DateTime?
+  approvedAt            DateTime?
+  businessGroup         BusinessGroup      @relation(fields: [businessGroupId], references: [id])
+  staffMembers          StaffMember[]
+  services              Service[]
+  invitations           BusinessInvitation[]
+  visits                Visit[]
+  queueEntries          QueueEntry[]
+  reservations          Reservation[]
+  notifications         NotificationEvent[]
+  operationalEvents     OperationalEvent[]
+  verificationChallenges VerificationChallenge[]
+  sourceSignups          BusinessSignup[]
+  customerReviews        CustomerReview[]
+  favoriteProfiles       FavoriteBusinessLocation[]
+
+  @@index([businessGroupId])
+  @@index([status, isPublic])
+}
+
+model BusinessSignup {
+  id                     String             @id @default(uuid())
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  approvalStatus         ApprovalStatus     @default(PENDING)
+  businessName           String
+  ownerName              String
+  mobileNumber           String
+  email                  String
+  addressLine1           String
+  addressLine2           String?
+  city                   String
+  region                 String?
+  postalCode             String?
+  countryCode            String             @default("GB")
+  industryType           IndustryType
+  serviceStationsCount   Int
+  openingHoursNote       String
+  passwordHash           String?
+  latitude               Float
+  longitude              Float
+  placeId                String?
+  geolocationSource      GeolocationSource?
+  geolocationCapturedAt  DateTime?
+  pinConfirmedAt         DateTime
+  approvedAt             DateTime?
+  rejectedAt             DateTime?
+  rejectionReason        String?
+  approvedBusinessGroupId String?
+  approvedLocationId     String?
+  approvedBusinessGroup  BusinessGroup?     @relation(fields: [approvedBusinessGroupId], references: [id])
+  approvedLocation       BusinessLocation?  @relation(fields: [approvedLocationId], references: [id])
+
+  @@index([approvalStatus, createdAt])
+  @@index([approvedBusinessGroupId])
+  @@index([approvedLocationId])
+}
+
+model BusinessMembership {
+  id              String          @id @default(uuid())
+  businessGroupId String
+  userId          String
+  role            MembershipRole
+  invitedAt       DateTime?
+  acceptedAt      DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  businessGroup   BusinessGroup   @relation(fields: [businessGroupId], references: [id])
+  user            User            @relation(fields: [userId], references: [id])
+
+  @@unique([businessGroupId, userId])
+  @@index([userId])
+}
+
+model BusinessInvitation {
+  id                  String           @id @default(uuid())
+  businessGroupId     String
+  businessLocationId  String
+  invitedByUserId     String
+  acceptedByUserId    String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  email               String
+  firstName           String?
+  lastName            String?
+  role                MembershipRole
+  tokenHash           String           @unique
+  expiresAt           DateTime
+  acceptedAt          DateTime?
+  revokedAt           DateTime?
+  note                String?
+  businessGroup       BusinessGroup    @relation(fields: [businessGroupId], references: [id])
+  businessLocation    BusinessLocation @relation(fields: [businessLocationId], references: [id])
+  invitedByUser       User             @relation("InvitationSender", fields: [invitedByUserId], references: [id])
+  acceptedByUser      User?            @relation("InvitationAcceptedByUser", fields: [acceptedByUserId], references: [id])
+
+  @@index([businessGroupId, createdAt])
+  @@index([businessLocationId, createdAt])
+  @@index([email, createdAt])
+}
+
+model StaffMember {
+  id                 String           @id @default(uuid())
+  businessLocationId String
+  userId             String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  displayName        String
+  isActive           Boolean          @default(true)
+  sortOrder          Int              @default(0)
+  skillTags          String[]
+  businessLocation   BusinessLocation @relation(fields: [businessLocationId], references: [id])
+  user               User?            @relation(fields: [userId], references: [id])
+  assignedVisits     Visit[]
+
+  @@index([businessLocationId, isActive])
+  @@index([userId])
+}
+
+model Customer {
+  id                     String                  @id @default(uuid())
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  firstName              String
+  phone                  String?                 @unique
+  email                  String?
+  phoneVerifiedAt        DateTime?
+  marketingOptInAt       DateTime?
+  visits                 Visit[]
+  notifications          NotificationEvent[]
+  verificationChallenges VerificationChallenge[]
+  reviews                CustomerReview[]
+  preferenceProfiles     CustomerPreferenceProfile[]
+}
+
+model CustomerPreferenceProfile {
+  id                String                 @id @default(uuid())
+  deviceKey         String                 @unique
+  customerId        String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  lastSeenAt        DateTime               @default(now())
+  label             String?
+  customer          Customer?              @relation(fields: [customerId], references: [id])
+  favoriteLocations FavoriteBusinessLocation[]
+
+  @@index([customerId])
+  @@index([lastSeenAt])
+}
+
+model FavoriteBusinessLocation {
+  id                 String                    @id @default(uuid())
+  preferenceProfileId String
+  businessLocationId String
+  createdAt          DateTime                  @default(now())
+  profile            CustomerPreferenceProfile @relation(fields: [preferenceProfileId], references: [id])
+  businessLocation   BusinessLocation          @relation(fields: [businessLocationId], references: [id])
+
+  @@unique([preferenceProfileId, businessLocationId])
+  @@index([businessLocationId, createdAt])
+}
+
+model Service {
+  id                 String           @id @default(uuid())
+  businessLocationId String
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  name               String
+  category           String?
+  description        String?
+  defaultDurationMin Int
+  priceMinor         Int?
+  currency           String           @default("GBP")
+  isQueueable        Boolean          @default(true)
+  isBookable         Boolean          @default(true)
+  isActive           Boolean          @default(true)
+  businessLocation   BusinessLocation @relation(fields: [businessLocationId], references: [id])
+  visits             Visit[]
+  reservations       Reservation[]
+
+  @@index([businessLocationId, isActive])
+}
+
+model Visit {
+  id                    String              @id @default(uuid())
+  businessLocationId    String
+  customerId            String
+  serviceId             String?
+  assignedStaffMemberId String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  source                VisitSource
+  status                VisitStatus         @default(QUEUED)
+  plannedDurationMin    Int?
+  estimatedWaitMin      Int?
+  actualDurationMin     Int?
+  queueJoinedAt         DateTime?
+  readyAt               DateTime?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  cancelledAt           DateTime?
+  notes                 String?
+  businessLocation      BusinessLocation    @relation(fields: [businessLocationId], references: [id])
+  customer              Customer            @relation(fields: [customerId], references: [id])
+  service               Service?            @relation(fields: [serviceId], references: [id])
+  assignedStaffMember   StaffMember?        @relation(fields: [assignedStaffMemberId], references: [id])
+  queueEntry            QueueEntry?
+  reservation           Reservation?
+  payment               Payment?
+  adjustments           ServiceAdjustment[]
+  notifications         NotificationEvent[]
+  operationalEvents     OperationalEvent[]
+  customerReview        CustomerReview?
+
+  @@index([businessLocationId, status])
+  @@index([customerId, createdAt])
+  @@index([assignedStaffMemberId])
+}
+
+model CustomerReview {
+  id                 String           @id @default(uuid())
+  businessLocationId String
+  visitId            String           @unique
+  customerId         String
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  rating             Int?
+  comment            String?
+  isPublic           Boolean          @default(true)
+  businessLocation   BusinessLocation @relation(fields: [businessLocationId], references: [id])
+  visit              Visit            @relation(fields: [visitId], references: [id])
+  customer           Customer         @relation(fields: [customerId], references: [id])
+
+  @@index([businessLocationId, createdAt])
+  @@index([businessLocationId, rating])
+  @@index([customerId, createdAt])
+}
+
+model QueueEntry {
+  id                       String                @id @default(uuid())
+  visitId                  String                @unique
+  businessLocationId       String
+  insertedByUserId         String?
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+  trackingToken            String                @unique
+  sortIndex                Int
+  joinedAt                 DateTime              @default(now())
+  isWalkIn                 Boolean               @default(false)
+  manualInsertReason       String?
+  confirmationStatus       ArrivalResponseStatus @default(PENDING)
+  confirmationRequestedAt  DateTime?
+  confirmationRespondedAt  DateTime?
+  calledAt                 DateTime?
+  presentConfirmedAt       DateTime?
+  missedAt                 DateTime?
+  removedAt                DateTime?
+  releasedAt               DateTime?
+  businessLocation         BusinessLocation      @relation(fields: [businessLocationId], references: [id])
+  visit                    Visit                 @relation(fields: [visitId], references: [id])
+  insertedByUser           User?                 @relation("QueueInsertedByUser", fields: [insertedByUserId], references: [id])
+  operationalEvents        OperationalEvent[]
+
+  @@index([businessLocationId, sortIndex])
+  @@index([businessLocationId, confirmationStatus])
+}
+
+model Reservation {
+  id                String            @id @default(uuid())
+  visitId           String            @unique
+  businessLocationId String
+  serviceId         String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  slotStartAt       DateTime
+  slotEndAt         DateTime
+  bookingFeeMinor   Int
+  currency          String            @default("GBP")
+  status            ReservationStatus @default(PENDING_PAYMENT)
+  paymentStatus     PaymentStatus     @default(PENDING)
+  confirmedAt       DateTime?
+  cancelledAt       DateTime?
+  cancellationReason String?
+  businessLocation  BusinessLocation  @relation(fields: [businessLocationId], references: [id])
+  visit             Visit             @relation(fields: [visitId], references: [id])
+  service           Service           @relation(fields: [serviceId], references: [id])
+  payment           Payment?
+
+  @@index([businessLocationId, slotStartAt])
+  @@index([status, slotStartAt])
+}
+
+model Payment {
+  id                      String        @id @default(uuid())
+  visitId                 String?       @unique
+  reservationId           String?       @unique
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+  provider                String        @default("STRIPE")
+  providerPaymentIntentId String?       @unique
+  amountMinor             Int
+  currency                String        @default("GBP")
+  status                  PaymentStatus @default(PENDING)
+  paidAt                  DateTime?
+  refundedAt              DateTime?
+  failureReason           String?
+  visit                   Visit?        @relation(fields: [visitId], references: [id])
+  reservation             Reservation?  @relation(fields: [reservationId], references: [id])
+}
+
+model ServiceAdjustment {
+  id              String                @id @default(uuid())
+  visitId         String
+  createdByUserId String?
+  createdAt       DateTime              @default(now())
+  type            ServiceAdjustmentType
+  label           String
+  durationDeltaMin Int
+  notes           String?
+  visit           Visit                 @relation(fields: [visitId], references: [id])
+  createdByUser   User?                 @relation("AdjustmentActor", fields: [createdByUserId], references: [id])
+
+  @@index([visitId, createdAt])
+}
+
+model NotificationEvent {
+  id                String             @id @default(uuid())
+  businessLocationId String
+  visitId           String?
+  customerId        String?
+  triggeredByUserId String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  type              NotificationType
+  channel           NotificationChannel
+  status            NotificationStatus @default(QUEUED)
+  target            String
+  templateKey       String?
+  payload           Json?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  respondedAt       DateTime?
+  responseText      String?
+  businessLocation  BusinessLocation   @relation(fields: [businessLocationId], references: [id])
+  visit             Visit?             @relation(fields: [visitId], references: [id])
+  customer          Customer?          @relation(fields: [customerId], references: [id])
+  triggeredByUser   User?              @relation("NotificationTriggerUser", fields: [triggeredByUserId], references: [id])
+
+  @@index([businessLocationId, type, createdAt])
+  @@index([visitId, createdAt])
+}
+
+model OperationalEvent {
+  id                String               @id @default(uuid())
+  businessLocationId String
+  visitId           String?
+  queueEntryId      String?
+  actorUserId       String?
+  createdAt         DateTime             @default(now())
+  type              OperationalEventType
+  metadata          Json?
+  businessLocation  BusinessLocation     @relation(fields: [businessLocationId], references: [id])
+  visit             Visit?               @relation(fields: [visitId], references: [id])
+  queueEntry        QueueEntry?          @relation(fields: [queueEntryId], references: [id])
+  actorUser         User?                @relation("EventActor", fields: [actorUserId], references: [id])
+
+  @@index([businessLocationId, createdAt])
+  @@index([visitId, createdAt])
+  @@index([queueEntryId, createdAt])
+}
+
+model VerificationChallenge {
+  id                String             @id @default(uuid())
+  customerId        String?
+  userId            String?
+  businessLocationId String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  purpose           VerificationPurpose
+  channel           VerificationChannel
+  status            VerificationStatus @default(PENDING)
+  target            String
+  codeHash          String?
+  expiresAt         DateTime
+  verifiedAt        DateTime?
+  customer          Customer?          @relation(fields: [customerId], references: [id])
+  user              User?              @relation(fields: [userId], references: [id])
+  businessLocation  BusinessLocation?  @relation(fields: [businessLocationId], references: [id])
+
+  @@index([target, purpose, status])
+  @@index([customerId, createdAt])
+  @@index([userId, createdAt])
+}

@@ -1,0 +1,44 @@
+{
+  "slug": "your-shop-slug",
+  "name": "Your Shop Display Name",
+  "groupName": "Your Shop Display Name",
+  "industryType": "BARBER",
+  "publicDescription": "Skip the wait. Join the queue from anywhere.",
+  "publicPhone": "+441234567890",
+  "publicEmail": "hello@yourshop.example",
+
+  "ownerFirstName": "Owner",
+  "ownerLastName": "Name",
+  "ownerEmail": "owner@yourshop.example",
+  "ownerPassword": "ChangeThisPassword1!",
+  "ownerPhone": "+441234567890",
+
+  "addressLine1": "1 Example Street",
+  "addressLine2": null,
+  "city": "London",
+  "postalCode": "W1F 8RG",
+  "countryCode": "GB",
+  "latitude": 51.5137,
+  "longitude": -0.1366,
+  "timezone": "Europe/London",
+
+  "serviceStationsCount": 2,
+  "defaultServiceDurationMin": 25,
+  "nearTurnPositionTrigger": 2,
+  "nearTurnEtaTriggerMin": 15,
+  "calledGracePeriodMin": 5,
+
+  "serviceName": "Classic Cut",
+  "serviceCategory": "Haircut",
+  "serviceDescription": "Standard barber cut",
+
+  "openingHours": {
+    "monday": "09:00-19:00",
+    "tuesday": "09:00-19:00",
+    "wednesday": "09:00-19:00",
+    "thursday": "09:00-20:00",
+    "friday": "09:00-20:00",
+    "saturday": "09:00-18:00",
+    "sunday": "closed"
+  }
+}

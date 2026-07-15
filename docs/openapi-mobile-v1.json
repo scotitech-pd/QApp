@@ -1,0 +1,3140 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Q-App Mobile API",
+    "version": "v1",
+    "description": "Machine-readable mobile-facing HTTP contract for Q-App v1."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:4000/v1",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    { "name": "Auth" },
+    { "name": "Discovery" },
+    { "name": "Queue" },
+    { "name": "Operator" },
+    { "name": "Invitations" },
+    { "name": "Onboarding" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Meta": {
+        "type": "object",
+        "required": ["requestId"],
+        "properties": {
+          "requestId": { "type": "string" },
+          "count": { "type": "integer" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error", "code", "meta"],
+        "properties": {
+          "error": { "type": "string" },
+          "code": { "type": "string" },
+          "details": {},
+          "meta": { "$ref": "#/components/schemas/Meta" }
+        }
+      },
+      "BusinessGroupRef": {
+        "type": "object",
+        "required": ["id", "name", "slug"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "slug": { "type": "string" }
+        }
+      },
+      "BusinessLocationRef": {
+        "type": "object",
+        "required": ["id", "name", "slug"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "slug": { "type": "string" }
+        }
+      },
+      "Membership": {
+        "type": "object",
+        "required": ["role", "businessGroup"],
+        "properties": {
+          "role": { "type": "string" },
+          "businessGroup": { "$ref": "#/components/schemas/BusinessGroupRef" }
+        }
+      },
+      "StaffProfile": {
+        "type": "object",
+        "required": ["id", "displayName", "businessLocation"],
+        "properties": {
+          "id": { "type": "string" },
+          "displayName": { "type": "string" },
+          "businessLocation": { "$ref": "#/components/schemas/BusinessLocationRef" }
+        }
+      },
+      "AuthUser": {
+        "type": "object",
+        "required": ["id", "appRole", "firstName", "email", "phone", "memberships", "staffProfiles"],
+        "properties": {
+          "id": { "type": "string" },
+          "appRole": { "type": "string" },
+          "firstName": { "type": "string" },
+          "lastName": { "type": ["string", "null"] },
+          "email": { "type": ["string", "null"] },
+          "phone": { "type": ["string", "null"] },
+          "memberships": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Membership" }
+          },
+          "staffProfiles": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StaffProfile" }
+          }
+        }
+      },
+      "AuthTokens": {
+        "type": "object",
+        "required": [
+          "accessToken",
+          "refreshToken",
+          "sessionId",
+          "accessTokenExpiresInSeconds",
+          "refreshTokenExpiresAt"
+        ],
+        "properties": {
+          "accessToken": { "type": "string" },
+          "refreshToken": { "type": "string" },
+          "sessionId": { "type": "string" },
+          "accessTokenExpiresInSeconds": { "type": "integer" },
+          "refreshTokenExpiresAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AuthLoginPayload": {
+        "type": "object",
+        "required": ["user", "tokens"],
+        "properties": {
+          "user": { "$ref": "#/components/schemas/AuthUser" },
+          "tokens": { "$ref": "#/components/schemas/AuthTokens" }
+        }
+      },
+      "Session": {
+        "type": "object",
+        "required": ["id", "createdAt", "expiresAt", "revokedAt", "lastUsedAt", "isCurrent"],
+        "properties": {
+          "id": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "revokedAt": { "type": ["string", "null"], "format": "date-time" },
+          "lastUsedAt": { "type": ["string", "null"], "format": "date-time" },
+          "userAgent": { "type": ["string", "null"] },
+          "ipAddress": { "type": ["string", "null"] },
+          "deviceName": { "type": ["string", "null"] },
+          "platform": { "type": ["string", "null"] },
+          "isCurrent": { "type": "boolean" }
+        }
+      },
+      "AuthActivityActor": {
+        "type": ["object", "null"],
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": ["string", "null"] },
+          "firstName": { "type": "string" },
+          "lastName": { "type": ["string", "null"] }
+        }
+      },
+      "AuthActivityUser": {
+        "type": ["object", "null"],
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": ["string", "null"] },
+          "phone": { "type": ["string", "null"] },
+          "firstName": { "type": "string" },
+          "lastName": { "type": ["string", "null"] }
+        }
+      },
+      "AuthActivityEvent": {
+        "type": "object",
+        "required": ["id", "createdAt", "type", "identifier", "metadata", "sessionId", "user", "actorUser"],
+        "properties": {
+          "id": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "type": { "type": "string" },
+          "identifier": { "type": ["string", "null"] },
+          "ipAddress": { "type": ["string", "null"] },
+          "userAgent": { "type": ["string", "null"] },
+          "deviceName": { "type": ["string", "null"] },
+          "platform": { "type": ["string", "null"] },
+          "metadata": {},
+          "sessionId": { "type": ["string", "null"] },
+          "user": { "$ref": "#/components/schemas/AuthActivityUser" },
+          "actorUser": { "$ref": "#/components/schemas/AuthActivityActor" }
+        }
+      },
+      "Shop": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "city",
+          "countryCode",
+          "addressLine1",
+          "latitude",
+          "longitude",
+          "serviceStationsCount",
+          "queueEnabled",
+          "queuePaused",
+          "industryType",
+          "approvalStatus",
+          "distanceKm",
+          "queueLength",
+          "estimatedWaitMin",
+          "bestJoinScore",
+          "bestJoinReason",
+          "isFavorite",
+          "reviewSummary"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "city": { "type": "string" },
+          "region": { "type": ["string", "null"] },
+          "countryCode": { "type": "string" },
+          "addressLine1": { "type": "string" },
+          "postalCode": { "type": ["string", "null"] },
+          "latitude": { "type": "number" },
+          "longitude": { "type": "number" },
+          "publicDescription": { "type": ["string", "null"] },
+          "serviceStationsCount": { "type": "integer" },
+          "queueEnabled": { "type": "boolean" },
+          "queuePaused": { "type": "boolean" },
+          "industryType": { "type": "string" },
+          "approvalStatus": { "type": "string" },
+          "distanceKm": { "type": ["number", "null"] },
+          "queueLength": { "type": "integer" },
+          "estimatedWaitMin": { "type": "integer" },
+          "bestJoinScore": { "type": "number" },
+          "bestJoinReason": { "type": "string" },
+          "isFavorite": { "type": "boolean" },
+          "favoriteSince": { "type": "string", "format": "date-time" },
+          "reviewSummary": { "$ref": "#/components/schemas/ReviewSummary" },
+          "reviews": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PublicReview" }
+          }
+        }
+      },
+      "ReviewSummary": {
+        "type": "object",
+        "required": ["averageRating", "ratingCount"],
+        "properties": {
+          "averageRating": { "type": ["number", "null"] },
+          "ratingCount": { "type": "integer" }
+        }
+      },
+      "PublicReview": {
+        "type": "object",
+        "required": ["id", "rating", "comment", "createdAt", "customerName"],
+        "properties": {
+          "id": { "type": "string" },
+          "rating": { "type": ["integer", "null"], "minimum": 1, "maximum": 5 },
+          "comment": { "type": ["string", "null"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "customerName": { "type": "string" }
+        }
+      },
+      "FavoriteShopResult": {
+        "type": "object",
+        "required": ["slug", "isFavorite"],
+        "properties": {
+          "slug": { "type": "string" },
+          "isFavorite": { "type": "boolean" }
+        }
+      },
+      "QueueCustomer": {
+        "type": "object",
+        "required": ["firstName"],
+        "properties": {
+          "firstName": { "type": "string" }
+        }
+      },
+      "QueueShop": {
+        "type": "object",
+        "required": ["id", "slug", "name", "city", "queuePaused", "calledGracePeriodMin"],
+        "properties": {
+          "id": { "type": "string" },
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "city": { "type": "string" },
+          "queuePaused": { "type": "boolean" },
+          "calledGracePeriodMin": { "type": "integer" }
+        }
+      },
+      "QueueStatus": {
+        "type": "object",
+        "required": [
+          "trackingToken",
+          "sortIndex",
+          "joinedAt",
+          "confirmationStatus",
+          "confirmationRequestedAt",
+          "confirmationRespondedAt",
+          "calledAt",
+          "visitStatus",
+          "plannedDurationMin",
+          "estimatedWaitMin",
+          "actualDurationMin",
+          "queueJoinedAt",
+          "readyAt",
+          "startedAt",
+          "completedAt",
+          "feedbackSubmitted",
+          "customer",
+          "shop"
+        ],
+        "properties": {
+          "trackingToken": { "type": "string" },
+          "sortIndex": { "type": "integer" },
+          "joinedAt": { "type": "string", "format": "date-time" },
+          "confirmationStatus": { "type": "string" },
+          "confirmationRequestedAt": { "type": ["string", "null"], "format": "date-time" },
+          "confirmationRespondedAt": { "type": ["string", "null"], "format": "date-time" },
+          "calledAt": { "type": ["string", "null"], "format": "date-time" },
+          "visitStatus": { "type": "string" },
+          "plannedDurationMin": { "type": ["integer", "null"] },
+          "estimatedWaitMin": { "type": ["integer", "null"] },
+          "actualDurationMin": { "type": ["integer", "null"] },
+          "queueJoinedAt": { "type": ["string", "null"], "format": "date-time" },
+          "readyAt": { "type": ["string", "null"], "format": "date-time" },
+          "startedAt": { "type": ["string", "null"], "format": "date-time" },
+          "completedAt": { "type": ["string", "null"], "format": "date-time" },
+          "feedbackSubmitted": { "type": "boolean" },
+          "customer": { "$ref": "#/components/schemas/QueueCustomer" },
+          "shop": { "$ref": "#/components/schemas/QueueShop" },
+          "position": { "type": ["integer", "null"] },
+          "queueLength": { "type": "integer" },
+          "nearTurnNotifiedAt": { "type": ["string", "null"], "format": "date-time" },
+          "arrivalConfirmationSentAt": { "type": ["string", "null"], "format": "date-time" },
+          "responseWindowEndsAt": { "type": ["string", "null"], "format": "date-time" },
+          "canRespondToArrival": { "type": "boolean" }
+        }
+      },
+      "QueueJoinStartRequest": {
+        "type": "object",
+        "required": ["shopSlug", "firstName", "mobileNumber"],
+        "properties": {
+          "shopSlug": { "type": "string" },
+          "firstName": { "type": "string" },
+          "mobileNumber": { "type": "string" }
+        }
+      },
+      "QueueJoinStartResult": {
+        "type": "object",
+        "required": ["challengeId", "expiresAt", "message", "deliveryMode"],
+        "properties": {
+          "challengeId": { "type": "string" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "message": { "type": "string" },
+          "deliveryMode": { "type": "string" },
+          "deliveryReason": { "type": ["string", "null"] },
+          "codePreview": { "type": "string" }
+        }
+      },
+      "QueueJoinVerifyRequest": {
+        "type": "object",
+        "required": ["challengeId", "code"],
+        "properties": {
+          "challengeId": { "type": "string" },
+          "code": { "type": "string" }
+        }
+      },
+      "QueueJoinVerifyResult": {
+        "type": "object",
+        "required": ["alreadyJoined", "queueStatus"],
+        "properties": {
+          "alreadyJoined": { "type": "boolean" },
+          "queueStatus": { "$ref": "#/components/schemas/QueueStatus" }
+        }
+      },
+      "ArrivalResponseRequest": {
+        "type": "object",
+        "required": ["response"],
+        "properties": {
+          "response": {
+            "type": "string",
+            "enum": ["COMING", "DECLINED"]
+          }
+        }
+      },
+      "QueueFeedbackRequest": {
+        "type": "object",
+        "properties": {
+          "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "comment": { "type": "string", "maxLength": 1000 }
+        }
+      },
+      "QueueLeaveRequest": {
+        "type": "object",
+        "properties": {
+          "reason": { "type": "string", "maxLength": 200 }
+        }
+      },
+      "QueueLeaveResult": {
+        "type": "object",
+        "required": ["trackingToken", "visitStatus", "releasedAt", "message"],
+        "properties": {
+          "trackingToken": { "type": "string" },
+          "visitStatus": { "type": "string" },
+          "releasedAt": { "type": ["string", "null"], "format": "date-time" },
+          "message": { "type": "string" }
+        }
+      },
+      "QueueFeedbackResult": {
+        "type": "object",
+        "required": ["feedbackSubmitted", "message"],
+        "properties": {
+          "feedbackSubmitted": { "type": "boolean" },
+          "message": { "type": "string" }
+        }
+      },
+      "ReleaseNoShowRequest": {
+        "type": "object",
+        "properties": {
+          "reason": { "type": "string", "maxLength": 200 }
+        }
+      },
+      "ReleaseNoShowResult": {
+        "type": "object",
+        "required": ["trackingToken", "visitStatus", "releasedAt", "reason"],
+        "properties": {
+          "trackingToken": { "type": "string" },
+          "visitStatus": { "type": "string", "enum": ["NO_SHOW"] },
+          "releasedAt": { "type": "string", "format": "date-time" },
+          "reason": { "type": "string" }
+        }
+      },
+      "ReinstateMissedRequest": {
+        "type": "object",
+        "properties": {
+          "reason": { "type": "string", "maxLength": 200 }
+        }
+      },
+      "ReinstateMissedResult": {
+        "type": "object",
+        "required": ["trackingToken", "visitStatus", "sortIndex", "reinstatedAt", "reason"],
+        "properties": {
+          "trackingToken": { "type": "string" },
+          "visitStatus": { "type": "string", "enum": ["READY"] },
+          "sortIndex": { "type": "integer" },
+          "reinstatedAt": { "type": "string", "format": "date-time" },
+          "reason": { "type": "string" }
+        }
+      },
+      "QueueEntryVisitCustomer": {
+        "type": "object",
+        "required": ["id", "firstName", "phone"],
+        "properties": {
+          "id": { "type": "string" },
+          "firstName": { "type": "string" },
+          "phone": { "type": ["string", "null"] }
+        }
+      },
+      "QueueEntryVisit": {
+        "type": "object",
+        "required": ["id", "source", "status", "plannedDurationMin", "estimatedWaitMin", "queueJoinedAt", "customer"],
+        "properties": {
+          "id": { "type": "string" },
+          "source": { "type": "string" },
+          "status": { "type": "string" },
+          "plannedDurationMin": { "type": ["integer", "null"] },
+          "estimatedWaitMin": { "type": ["integer", "null"] },
+          "queueJoinedAt": { "type": ["string", "null"], "format": "date-time" },
+          "customer": { "$ref": "#/components/schemas/QueueEntryVisitCustomer" }
+        }
+      },
+      "QueueEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "trackingToken",
+          "sortIndex",
+          "joinedAt",
+          "confirmationStatus",
+          "confirmationRequestedAt",
+          "confirmationRespondedAt",
+          "calledAt",
+          "missedAt",
+          "releasedAt",
+          "removedAt",
+          "visit"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "trackingToken": { "type": "string" },
+          "sortIndex": { "type": "integer" },
+          "joinedAt": { "type": "string", "format": "date-time" },
+          "confirmationStatus": { "type": "string" },
+          "confirmationRequestedAt": { "type": ["string", "null"], "format": "date-time" },
+          "confirmationRespondedAt": { "type": ["string", "null"], "format": "date-time" },
+          "calledAt": { "type": ["string", "null"], "format": "date-time" },
+          "missedAt": { "type": ["string", "null"], "format": "date-time" },
+          "releasedAt": { "type": ["string", "null"], "format": "date-time" },
+          "removedAt": { "type": ["string", "null"], "format": "date-time" },
+          "visit": { "$ref": "#/components/schemas/QueueEntryVisit" }
+        }
+      },
+      "InServiceVisit": {
+        "type": "object",
+        "required": ["id", "status", "startedAt", "plannedDurationMin", "customer"],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "type": "string" },
+          "startedAt": { "type": ["string", "null"], "format": "date-time" },
+          "plannedDurationMin": { "type": ["integer", "null"] },
+          "customer": { "$ref": "#/components/schemas/QueueCustomer" }
+        }
+      },
+      "OperatorShop": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "queuePaused",
+          "queuePauseReason",
+          "queueEnabled",
+          "defaultWalkInDurationMin",
+          "serviceStationsCount",
+          "nearTurnPositionTrigger",
+          "nearTurnEtaTriggerMin",
+          "calledGracePeriodMin"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "queuePaused": { "type": "boolean" },
+          "queuePauseReason": { "type": ["string", "null"] },
+          "queueEnabled": { "type": "boolean" },
+          "defaultWalkInDurationMin": { "type": "integer" },
+          "serviceStationsCount": { "type": "integer" },
+          "nearTurnPositionTrigger": { "type": "integer" },
+          "nearTurnEtaTriggerMin": { "type": "integer" },
+          "calledGracePeriodMin": { "type": "integer" }
+        }
+      },
+      "QueueDashboard": {
+        "type": "object",
+        "required": ["shop", "queueEntries", "inServiceVisits", "missedQueueEntries", "reviewSummary", "recentReviews"],
+        "properties": {
+          "shop": { "$ref": "#/components/schemas/OperatorShop" },
+          "queueEntries": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/QueueEntry" }
+          },
+          "inServiceVisits": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/InServiceVisit" }
+          },
+          "missedQueueEntries": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/QueueEntry" }
+          },
+          "reviewSummary": { "$ref": "#/components/schemas/ReviewSummary" },
+          "recentReviews": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PublicReview" }
+          }
+        }
+      },
+      "ShopProfile": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "publicDescription",
+          "logoImageUrl",
+          "coverImageUrl",
+          "phone",
+          "email",
+          "openingHoursNote",
+          "serviceStationsCount",
+          "defaultWalkInDurationMin"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "publicDescription": { "type": ["string", "null"] },
+          "logoImageUrl": { "type": ["string", "null"] },
+          "coverImageUrl": { "type": ["string", "null"] },
+          "phone": { "type": ["string", "null"] },
+          "email": { "type": ["string", "null"] },
+          "openingHoursNote": { "type": "string" },
+          "serviceStationsCount": { "type": "integer" },
+          "defaultWalkInDurationMin": { "type": "integer" }
+        }
+      },
+      "ShopProfileUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "publicDescription": { "type": "string" },
+          "logoImageUrl": { "type": "string" },
+          "coverImageUrl": { "type": "string" },
+          "phone": { "type": "string" },
+          "email": { "type": "string" },
+          "openingHoursNote": { "type": "string" },
+          "serviceStationsCount": { "type": "integer" },
+          "defaultWalkInDurationMin": { "type": "integer" }
+        }
+      },
+      "ServiceExtensionRequest": {
+        "type": "object",
+        "required": ["durationDeltaMin"],
+        "properties": {
+          "durationDeltaMin": { "type": "integer", "minimum": 1, "maximum": 180 },
+          "label": { "type": "string" },
+          "notes": { "type": "string" }
+        }
+      },
+      "AddWalkInRequest": {
+        "type": "object",
+        "required": ["firstName"],
+        "properties": {
+          "firstName": { "type": "string" },
+          "mobileNumber": { "type": "string" },
+          "plannedDurationMin": { "type": "integer" },
+          "reason": { "type": "string" }
+        }
+      },
+      "QueuePauseRequest": {
+        "type": "object",
+        "properties": {
+          "reason": { "type": "string" }
+        }
+      },
+      "QueuePauseState": {
+        "type": "object",
+        "required": ["slug", "queuePaused", "queuePauseReason"],
+        "properties": {
+          "slug": { "type": "string" },
+          "queuePaused": { "type": "boolean" },
+          "queuePauseReason": { "type": ["string", "null"] }
+        }
+      },
+      "Invitation": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "role",
+          "note",
+          "createdAt",
+          "expiresAt",
+          "acceptedAt",
+          "revokedAt",
+          "businessGroup",
+          "businessLocation"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": "string" },
+          "firstName": { "type": ["string", "null"] },
+          "lastName": { "type": ["string", "null"] },
+          "role": { "type": "string" },
+          "note": { "type": ["string", "null"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "acceptedAt": { "type": ["string", "null"], "format": "date-time" },
+          "revokedAt": { "type": ["string", "null"], "format": "date-time" },
+          "businessGroup": { "$ref": "#/components/schemas/BusinessGroupRef" },
+          "businessLocation": { "$ref": "#/components/schemas/BusinessLocationRef" },
+          "inviteToken": { "type": "string" },
+          "inviteUrl": { "type": "string" }
+        }
+      },
+      "InvitationAcceptanceResult": {
+        "type": "object",
+        "required": ["invitation", "acceptedUser"],
+        "properties": {
+          "invitation": { "$ref": "#/components/schemas/Invitation" },
+          "acceptedUser": {
+            "type": "object",
+            "required": ["id", "email", "firstName", "lastName"],
+            "properties": {
+              "id": { "type": "string" },
+              "email": { "type": ["string", "null"] },
+              "firstName": { "type": "string" },
+              "lastName": { "type": ["string", "null"] }
+            }
+          }
+        }
+      },
+      "BusinessSignupRequest": {
+        "type": "object",
+        "required": [
+          "businessName",
+          "ownerName",
+          "mobileNumber",
+          "email",
+          "addressLine1",
+          "city",
+          "countryCode",
+          "industryType",
+          "serviceStationsCount",
+          "openingHoursNote",
+          "latitude",
+          "longitude",
+          "geolocationSource",
+          "pinConfirmedAt"
+        ],
+        "properties": {
+          "businessName": { "type": "string" },
+          "ownerName": { "type": "string" },
+          "mobileNumber": { "type": "string" },
+          "email": { "type": "string" },
+          "addressLine1": { "type": "string" },
+          "addressLine2": { "type": "string" },
+          "city": { "type": "string" },
+          "region": { "type": "string" },
+          "postalCode": { "type": "string" },
+          "countryCode": { "type": "string" },
+          "industryType": { "type": "string" },
+          "serviceStationsCount": { "type": "integer", "minimum": 1 },
+          "openingHoursNote": { "type": "string" },
+          "latitude": { "type": "number" },
+          "longitude": { "type": "number" },
+          "placeId": { "type": "string" },
+          "geolocationSource": { "type": "string" },
+          "pinConfirmedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BusinessSignupResult": {
+        "type": "object",
+        "required": [
+          "id",
+          "createdAt",
+          "updatedAt",
+          "approvalStatus",
+          "businessName",
+          "ownerName",
+          "mobileNumber",
+          "email",
+          "addressLine1",
+          "city",
+          "countryCode",
+          "industryType",
+          "serviceStationsCount",
+          "openingHoursNote",
+          "latitude",
+          "longitude",
+          "geolocationSource",
+          "pinConfirmedAt",
+          "approvedAt",
+          "rejectedAt",
+          "rejectionReason",
+          "approvedBusinessGroupId",
+          "approvedLocationId"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "approvalStatus": { "type": "string" },
+          "businessName": { "type": "string" },
+          "ownerName": { "type": "string" },
+          "mobileNumber": { "type": "string" },
+          "email": { "type": "string" },
+          "addressLine1": { "type": "string" },
+          "addressLine2": { "type": ["string", "null"] },
+          "city": { "type": "string" },
+          "region": { "type": ["string", "null"] },
+          "postalCode": { "type": ["string", "null"] },
+          "countryCode": { "type": "string" },
+          "industryType": { "type": "string" },
+          "serviceStationsCount": { "type": "integer" },
+          "openingHoursNote": { "type": "string" },
+          "latitude": { "type": "number" },
+          "longitude": { "type": "number" },
+          "placeId": { "type": ["string", "null"] },
+          "geolocationSource": { "type": "string" },
+          "pinConfirmedAt": { "type": "string", "format": "date-time" },
+          "approvedAt": { "type": ["string", "null"], "format": "date-time" },
+          "rejectedAt": { "type": ["string", "null"], "format": "date-time" },
+          "rejectionReason": { "type": ["string", "null"] },
+          "approvedBusinessGroupId": { "type": ["string", "null"] },
+          "approvedLocationId": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "error": "Invalid payload.",
+              "code": "BAD_REQUEST",
+              "meta": { "requestId": "request-id" }
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "error": "Authentication required.",
+              "code": "UNAUTHORIZED",
+              "meta": { "requestId": "request-id" }
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Forbidden",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "error": "Business role does not allow this action.",
+              "code": "FORBIDDEN",
+              "meta": { "requestId": "request-id" }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "error": "Resource not found.",
+              "code": "NOT_FOUND",
+              "meta": { "requestId": "request-id" }
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Conflict",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "error": "Conflict.",
+              "code": "CONFLICT",
+              "meta": { "requestId": "request-id" }
+            }
+          }
+        }
+      },
+      "Locked": {
+        "description": "Account locked",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "error": "Account is temporarily locked due to repeated failed login attempts.",
+              "code": "ACCOUNT_LOCKED",
+              "details": {
+                "lockedUntil": "2026-06-12T10:30:00.000Z"
+              },
+              "meta": { "requestId": "request-id" }
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "Rate limited",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "error": "Too many login attempts. Please try again later.",
+              "code": "LOGIN_RATE_LIMITED",
+              "meta": { "requestId": "request-id" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "authLogin",
+        "summary": "Login with identifier and password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["identifier", "password"],
+                "properties": {
+                  "identifier": { "type": "string" },
+                  "password": { "type": "string" },
+                  "deviceName": { "type": "string" },
+                  "platform": { "type": "string" }
+                }
+              },
+              "example": {
+                "identifier": "owner@fadeyard.demo",
+                "password": "QappOwner123!",
+                "deviceName": "iPhone 16 Pro",
+                "platform": "ios"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated session created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "item", "meta"],
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/AuthLoginPayload" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "user": {
+                      "id": "user-id",
+                      "appRole": "USER",
+                      "firstName": "Owen",
+                      "lastName": "Owner",
+                      "email": "owner@fadeyard.demo",
+                      "phone": "+447400000202",
+                      "memberships": [],
+                      "staffProfiles": []
+                    },
+                    "tokens": {
+                      "accessToken": "<jwt>",
+                      "refreshToken": "<refresh>",
+                      "sessionId": "session-id",
+                      "accessTokenExpiresInSeconds": 900,
+                      "refreshTokenExpiresAt": "2026-07-12T09:15:30.000Z"
+                    }
+                  },
+                  "item": {},
+                  "meta": {
+                    "requestId": "request-id"
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "423": { "$ref": "#/components/responses/Locked" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "authRefresh",
+        "summary": "Refresh an authenticated session",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["refreshToken"],
+                "properties": {
+                  "refreshToken": { "type": "string" }
+                }
+              },
+              "example": {
+                "refreshToken": "<refresh-token>"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session refreshed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/AuthLoginPayload" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "user": {
+                      "id": "user-id",
+                      "appRole": "USER",
+                      "firstName": "Owen",
+                      "lastName": "Owner",
+                      "email": "owner@fadeyard.demo",
+                      "phone": "+447400000202",
+                      "memberships": [],
+                      "staffProfiles": []
+                    },
+                    "tokens": {
+                      "accessToken": "<jwt>",
+                      "refreshToken": "<refresh>",
+                      "sessionId": "session-id",
+                      "accessTokenExpiresInSeconds": 900,
+                      "refreshTokenExpiresAt": "2026-07-12T09:30:30.000Z"
+                    }
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "authLogout",
+        "summary": "Logout by refresh token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["refreshToken"],
+                "properties": {
+                  "refreshToken": { "type": "string" }
+                }
+              },
+              "example": {
+                "refreshToken": "<refresh-token>"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": ["revoked"],
+                      "properties": {
+                        "revoked": { "type": "boolean" }
+                      }
+                    },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": { "revoked": true },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "operationId": "authMe",
+        "summary": "Get current authenticated user",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Current user profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/AuthUser" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": "user-id",
+                    "appRole": "USER",
+                    "firstName": "Owen",
+                    "lastName": "Owner",
+                    "email": "owner@fadeyard.demo",
+                    "phone": "+447400000202",
+                    "memberships": [],
+                    "staffProfiles": []
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/auth/sessions": {
+      "get": {
+        "tags": ["Auth"],
+        "operationId": "authSessions",
+        "summary": "List active and historical sessions for the authenticated user",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Session list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Session" }
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Session" }
+                    },
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": "session-id",
+                      "createdAt": "2026-06-12T09:15:30.000Z",
+                      "expiresAt": "2026-07-12T09:15:30.000Z",
+                      "revokedAt": null,
+                      "lastUsedAt": "2026-06-12T09:15:30.000Z",
+                      "userAgent": "QApp iOS/1.0",
+                      "ipAddress": "::ffff:127.0.0.1",
+                      "deviceName": "iPhone 16 Pro",
+                      "platform": "ios",
+                      "isCurrent": true
+                    }
+                  ],
+                  "items": [],
+                  "meta": {
+                    "count": 1,
+                    "requestId": "request-id"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/activity": {
+      "get": {
+        "tags": ["Auth"],
+        "operationId": "authActivity",
+        "summary": "List recent authenticated user security activity",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Activity list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/AuthActivityEvent" }
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/AuthActivityEvent" }
+                    },
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": "event-id",
+                      "createdAt": "2026-06-12T09:20:11.000Z",
+                      "type": "LOGIN_SUCCEEDED",
+                      "identifier": "owner@fadeyard.demo",
+                      "ipAddress": "::ffff:127.0.0.1",
+                      "userAgent": "QApp iOS/1.0",
+                      "deviceName": "iPhone 16 Pro",
+                      "platform": "ios",
+                      "metadata": null,
+                      "sessionId": "session-id",
+                      "user": {
+                        "id": "user-id",
+                        "email": "owner@fadeyard.demo",
+                        "phone": "+447400000202",
+                        "firstName": "Owen",
+                        "lastName": "Owner"
+                      },
+                      "actorUser": null
+                    }
+                  ],
+                  "items": [],
+                  "meta": { "count": 1, "requestId": "request-id" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout-current": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "authLogoutCurrent",
+        "summary": "Logout the current session",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Current session revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": ["revoked"],
+                      "properties": {
+                        "revoked": { "type": "boolean" }
+                      }
+                    },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": { "revoked": true },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout-other-sessions": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "authLogoutOtherSessions",
+        "summary": "Logout every other session for the authenticated user",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Other sessions revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": ["revoked", "revokedSessionsCount"],
+                      "properties": {
+                        "revoked": { "type": "boolean" },
+                        "revokedSessionsCount": { "type": "integer" }
+                      }
+                    },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "revoked": true,
+                    "revokedSessionsCount": 1
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/sessions/{sessionId}/revoke": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "authRevokeSession",
+        "summary": "Revoke one owned session",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": ["revoked", "sessionId"],
+                      "properties": {
+                        "revoked": { "type": "boolean" },
+                        "sessionId": { "type": "string" }
+                      }
+                    },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "revoked": true,
+                    "sessionId": "session-id"
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/password-reset/request": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "authPasswordResetRequest",
+        "summary": "Request password reset",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["identifier"],
+                "properties": {
+                  "identifier": { "type": "string" }
+                }
+              },
+              "example": {
+                "identifier": "owner@fadeyard.demo"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Neutral password reset request response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": ["message"],
+                      "properties": {
+                        "message": { "type": "string" },
+                        "resetTokenPreview": { "type": "string" },
+                        "resetUrlPreview": { "type": "string" }
+                      }
+                    },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "message": "If the account exists, a password reset link has been prepared."
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/auth/password-reset/confirm": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "authPasswordResetConfirm",
+        "summary": "Confirm password reset with token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["token", "password"],
+                "properties": {
+                  "token": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              },
+              "example": {
+                "token": "<reset-token>",
+                "password": "QappOwnerReset123!"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": ["reset", "revokedSessions"],
+                      "properties": {
+                        "reset": { "type": "boolean" },
+                        "revokedSessions": { "type": "boolean" }
+                      }
+                    },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "reset": true,
+                    "revokedSessions": true
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/shops": {
+      "get": {
+        "tags": ["Discovery"],
+        "operationId": "listShops",
+        "summary": "List public live shops",
+        "parameters": [
+          {
+            "name": "X-QApp-Device-Id",
+            "in": "header",
+            "required": false,
+            "schema": { "type": "string" },
+            "description": "Anonymous app/browser device id used to mark favourite shops before customer login."
+          },
+          { "name": "latitude", "in": "query", "schema": { "type": "number" } },
+          { "name": "longitude", "in": "query", "schema": { "type": "number" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public shop list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Shop" }
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Shop" }
+                    },
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": "shop-id",
+                      "slug": "demo-barber",
+                      "name": "Fade Yard Soho",
+                      "city": "London",
+                      "region": null,
+                      "countryCode": "GB",
+                      "addressLine1": "24 Berwick Street",
+                      "postalCode": "W1F 8RG",
+                      "latitude": 51.5137,
+                      "longitude": -0.1366,
+                      "publicDescription": "Live demo location.",
+                      "serviceStationsCount": 2,
+                      "queueEnabled": true,
+                      "queuePaused": false,
+                      "industryType": "BARBER",
+                      "approvalStatus": "APPROVED",
+                      "distanceKm": 0,
+                      "queueLength": 4,
+                      "estimatedWaitMin": 40,
+                      "bestJoinScore": 40,
+                      "bestJoinReason": "Balanced by distance and live wait",
+                      "isFavorite": false,
+                      "reviewSummary": {
+                        "averageRating": 4.8,
+                        "ratingCount": 24
+                      }
+                    }
+                  ],
+                  "items": [],
+                  "meta": { "count": 1, "requestId": "request-id" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shops/{slug}": {
+      "get": {
+        "tags": ["Discovery"],
+        "operationId": "getShopBySlug",
+        "summary": "Get one public shop by slug",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public shop detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/Shop" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": "shop-id",
+                    "slug": "demo-barber",
+                    "name": "Fade Yard Soho",
+                    "city": "London",
+                    "region": null,
+                    "countryCode": "GB",
+                    "addressLine1": "24 Berwick Street",
+                    "postalCode": "W1F 8RG",
+                    "latitude": 51.5137,
+                    "longitude": -0.1366,
+                    "publicDescription": "Live demo location.",
+                    "serviceStationsCount": 2,
+                    "queueEnabled": true,
+                    "queuePaused": false,
+                    "industryType": "BARBER",
+                    "approvalStatus": "APPROVED",
+                    "distanceKm": null,
+                    "queueLength": 4,
+                    "estimatedWaitMin": 40,
+                    "bestJoinScore": 52,
+                    "bestJoinReason": "Selected shop",
+                    "isFavorite": false,
+                    "reviewSummary": {
+                      "averageRating": 4.8,
+                      "ratingCount": 24
+                    },
+                    "reviews": [
+                      {
+                        "id": "review-id-1",
+                        "rating": 5,
+                        "comment": "Got the leave-now alert at exactly the right time.",
+                        "createdAt": "2026-06-12T10:15:00.000Z",
+                        "customerName": "Amir"
+                      },
+                      {
+                        "id": "review-id-2",
+                        "rating": 4,
+                        "comment": "Easy queue, no standing around outside.",
+                        "createdAt": "2026-06-11T16:30:00.000Z",
+                        "customerName": "Sofia"
+                      }
+                    ]
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/preferences/favorites": {
+      "get": {
+        "tags": ["Discovery"],
+        "operationId": "listFavoriteShops",
+        "summary": "List favourite shops for an anonymous device",
+        "parameters": [
+          {
+            "name": "X-QApp-Device-Id",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          { "name": "latitude", "in": "query", "schema": { "type": "number" } },
+          { "name": "longitude", "in": "query", "schema": { "type": "number" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Favourite shop list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Shop" }
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Shop" }
+                    },
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": [],
+                  "items": [],
+                  "meta": { "count": 0, "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/preferences/favorites/{shopSlug}": {
+      "put": {
+        "tags": ["Discovery"],
+        "operationId": "addFavoriteShop",
+        "summary": "Mark a shop as favourite for an anonymous device",
+        "parameters": [
+          {
+            "name": "X-QApp-Device-Id",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          { "name": "shopSlug", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Favourite saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/FavoriteShopResult" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": { "slug": "demo-barber", "isFavorite": true },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Discovery"],
+        "operationId": "removeFavoriteShop",
+        "summary": "Remove a favourite shop for an anonymous device",
+        "parameters": [
+          {
+            "name": "X-QApp-Device-Id",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          { "name": "shopSlug", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Favourite removed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/FavoriteShopResult" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": { "slug": "demo-barber", "isFavorite": false },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/queue/join/start": {
+      "post": {
+        "tags": ["Queue"],
+        "operationId": "startQueueJoin",
+        "summary": "Start queue join with OTP challenge",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/QueueJoinStartRequest" },
+              "example": {
+                "shopSlug": "demo-barber",
+                "firstName": "Amir",
+                "mobileNumber": "+447400000301"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OTP challenge created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/QueueJoinStartResult" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "challengeId": "challenge-id",
+                    "expiresAt": "2026-06-12T09:30:00.000Z",
+                    "message": "Verification code created. SMS is currently using preview mode.",
+                    "deliveryMode": "preview",
+                    "deliveryReason": "twilio_not_configured"
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/queue/join/verify": {
+      "post": {
+        "tags": ["Queue"],
+        "operationId": "verifyQueueJoin",
+        "summary": "Verify OTP and join queue",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/QueueJoinVerifyRequest" },
+              "example": {
+                "challengeId": "challenge-id",
+                "code": "123456"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Queue join verified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/QueueJoinVerifyResult" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "alreadyJoined": false,
+                    "queueStatus": {
+                      "trackingToken": "demo-queue-amir",
+                      "sortIndex": 1,
+                      "joinedAt": "2026-06-12T09:21:00.000Z",
+                      "confirmationStatus": "PENDING",
+                      "confirmationRequestedAt": null,
+                      "confirmationRespondedAt": null,
+                      "calledAt": null,
+                      "visitStatus": "QUEUED",
+                      "plannedDurationMin": 20,
+                      "estimatedWaitMin": 18,
+                      "actualDurationMin": null,
+                      "queueJoinedAt": "2026-06-12T09:21:00.000Z",
+                      "readyAt": null,
+                      "startedAt": null,
+                      "completedAt": null,
+                      "feedbackSubmitted": false,
+                      "customer": {
+                        "firstName": "Amir"
+                      },
+                      "shop": {
+                        "id": "shop-id",
+                        "slug": "demo-barber",
+                        "name": "Fade Yard Soho",
+                        "city": "London",
+                        "queuePaused": false,
+                        "calledGracePeriodMin": 5
+                      },
+                      "position": 1,
+                      "queueLength": 4,
+                      "nearTurnNotifiedAt": null,
+                      "arrivalConfirmationSentAt": null,
+                      "responseWindowEndsAt": null,
+                      "canRespondToArrival": false
+                    }
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/queue/status/{trackingToken}": {
+      "get": {
+        "tags": ["Queue"],
+        "operationId": "getQueueStatus",
+        "summary": "Get queue status by tracking token",
+        "parameters": [
+          {
+            "name": "trackingToken",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Queue status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/QueueStatus" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "trackingToken": "demo-queue-amir",
+                    "sortIndex": 1,
+                    "joinedAt": "2026-06-12T09:21:00.000Z",
+                    "confirmationStatus": "PENDING",
+                    "confirmationRequestedAt": "2026-06-12T09:32:00.000Z",
+                    "confirmationRespondedAt": null,
+                    "calledAt": null,
+                    "visitStatus": "CONFIRMATION_PENDING",
+                    "plannedDurationMin": 20,
+                    "estimatedWaitMin": 8,
+                    "actualDurationMin": null,
+                    "queueJoinedAt": "2026-06-12T09:21:00.000Z",
+                    "readyAt": null,
+                    "startedAt": null,
+                    "completedAt": null,
+                    "feedbackSubmitted": false,
+                    "customer": {
+                      "firstName": "Amir"
+                    },
+                    "shop": {
+                      "id": "shop-id",
+                      "slug": "demo-barber",
+                      "name": "Fade Yard Soho",
+                      "city": "London",
+                      "queuePaused": false,
+                      "calledGracePeriodMin": 5
+                    },
+                    "position": 1,
+                    "queueLength": 2,
+                    "nearTurnNotifiedAt": "2026-06-12T09:31:30.000Z",
+                    "arrivalConfirmationSentAt": "2026-06-12T09:32:00.000Z",
+                    "responseWindowEndsAt": "2026-06-12T09:37:00.000Z",
+                    "canRespondToArrival": true
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/queue/status/{trackingToken}/respond-arrival": {
+      "post": {
+        "tags": ["Queue"],
+        "operationId": "respondArrival",
+        "summary": "Respond to arrival confirmation",
+        "parameters": [
+          {
+            "name": "trackingToken",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ArrivalResponseRequest" },
+              "example": {
+                "response": "COMING"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Arrival response recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": ["trackingToken", "response"],
+                      "properties": {
+                        "trackingToken": { "type": "string" },
+                        "response": { "type": "string" }
+                      }
+                    },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "trackingToken": "demo-queue-amir",
+                    "response": "COMING"
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/queue/status/{trackingToken}/leave": {
+      "post": {
+        "tags": ["Queue"],
+        "operationId": "leaveQueue",
+        "summary": "Leave an active queue place from the secure status link",
+        "parameters": [
+          {
+            "name": "trackingToken",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/QueueLeaveRequest" },
+              "example": {
+                "reason": "Customer left queue from status page"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Queue place released",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/QueueLeaveResult" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "trackingToken": "demo-queue-amir",
+                    "visitStatus": "CANCELLED",
+                    "releasedAt": "2026-06-12T09:29:00.000Z",
+                    "message": "Your queue place has been released."
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/queue/status/{trackingToken}/feedback": {
+      "post": {
+        "tags": ["Queue"],
+        "operationId": "submitQueueFeedback",
+        "summary": "Submit optional feedback after a completed queue visit",
+        "parameters": [
+          {
+            "name": "trackingToken",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/QueueFeedbackRequest" },
+              "example": {
+                "rating": 5,
+                "comment": "Easy to join and I did not have to wait inside."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Feedback recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/QueueFeedbackResult" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "feedbackSubmitted": true,
+                    "message": "Thanks for helping this shop improve."
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/ops/shops/{slug}/dashboard": {
+      "get": {
+        "tags": ["Operator"],
+        "operationId": "getOperatorDashboard",
+        "summary": "Get live operator dashboard for one shop",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operator queue dashboard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/QueueDashboard" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "shop": {
+                      "id": "shop-id",
+                      "slug": "demo-barber",
+                      "name": "Fade Yard Soho",
+                      "queuePaused": false,
+                      "queuePauseReason": null,
+                      "queueEnabled": true,
+                      "defaultWalkInDurationMin": 20,
+                      "serviceStationsCount": 2,
+                      "nearTurnPositionTrigger": 2,
+                      "nearTurnEtaTriggerMin": 15,
+                      "calledGracePeriodMin": 5
+                    },
+                    "queueEntries": [],
+                    "inServiceVisits": [],
+                    "missedQueueEntries": [],
+                    "reviewSummary": {
+                      "averageRating": 4.8,
+                      "ratingCount": 24
+                    },
+                    "recentReviews": [
+                      {
+                        "id": "review-id-1",
+                        "rating": 5,
+                        "comment": "Got the leave-now alert at exactly the right time.",
+                        "createdAt": "2026-06-12T10:15:00.000Z",
+                        "customerName": "Amir"
+                      }
+                    ]
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/ops/shops/{slug}/profile": {
+      "get": {
+        "tags": ["Operator"],
+        "operationId": "getShopProfile",
+        "summary": "Get protected owner-editable shop profile",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shop profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/ShopProfile" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": "shop-id",
+                    "slug": "demo-barber",
+                    "name": "Fade Yard Soho",
+                    "publicDescription": "Live Q-App demo location with a real queue.",
+                    "logoImageUrl": null,
+                    "coverImageUrl": null,
+                    "phone": "+447400000300",
+                    "email": "soho@fadeyard.demo",
+                    "openingHoursNote": "Mon-Sat, 10:00-19:00",
+                    "serviceStationsCount": 2,
+                    "defaultWalkInDurationMin": 20
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["Operator"],
+        "operationId": "updateShopProfile",
+        "summary": "Update protected owner-editable shop profile",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ShopProfileUpdateRequest" },
+              "example": {
+                "name": "Fade Yard Soho",
+                "publicDescription": "Walk in remotely and arrive near your turn.",
+                "logoImageUrl": "https://example.com/logo.jpg",
+                "coverImageUrl": "https://example.com/cover.jpg",
+                "phone": "+447400000300",
+                "email": "soho@fadeyard.demo",
+                "openingHoursNote": "Mon-Sat, 10:00-19:00",
+                "serviceStationsCount": 2,
+                "defaultWalkInDurationMin": 20
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated shop profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/ShopProfile" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": "shop-id",
+                    "slug": "demo-barber",
+                    "name": "Fade Yard Soho",
+                    "publicDescription": "Walk in remotely and arrive near your turn.",
+                    "logoImageUrl": "https://example.com/logo.jpg",
+                    "coverImageUrl": "https://example.com/cover.jpg",
+                    "phone": "+447400000300",
+                    "email": "soho@fadeyard.demo",
+                    "openingHoursNote": "Mon-Sat, 10:00-19:00",
+                    "serviceStationsCount": 2,
+                    "defaultWalkInDurationMin": 20
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/ops/shops/{slug}/walk-ins": {
+      "post": {
+        "tags": ["Operator"],
+        "operationId": "addWalkIn",
+        "summary": "Insert a walk-in queue customer",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AddWalkInRequest" },
+              "example": {
+                "firstName": "Jordan",
+                "mobileNumber": "+447400000355",
+                "plannedDurationMin": 25,
+                "reason": "Accepted walk-in between queue gaps"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Walk-in queue entry created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/QueueEntry" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": "queue-entry-id",
+                    "trackingToken": "walkin-visit-id",
+                    "sortIndex": 4,
+                    "joinedAt": "2026-06-12T09:45:00.000Z",
+                    "confirmationStatus": "PENDING",
+                    "confirmationRequestedAt": null,
+                    "confirmationRespondedAt": null,
+                    "calledAt": null,
+                    "visit": {
+                      "id": "visit-id",
+                      "source": "WALK_IN",
+                      "status": "QUEUED",
+                      "plannedDurationMin": 25,
+                      "estimatedWaitMin": 20,
+                      "queueJoinedAt": "2026-06-12T09:45:00.000Z",
+                      "customer": {
+                        "id": "customer-id",
+                        "firstName": "Jordan",
+                        "phone": "+447400000355"
+                      }
+                    }
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/shops/{slug}/pause-queue": {
+      "post": {
+        "tags": ["Operator"],
+        "operationId": "pauseQueue",
+        "summary": "Pause a shop queue",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/QueuePauseRequest" },
+              "example": {
+                "reason": "Staff break"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Queue paused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/QueuePauseState" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "slug": "demo-barber",
+                    "queuePaused": true,
+                    "queuePauseReason": "Staff break"
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/shops/{slug}/resume-queue": {
+      "post": {
+        "tags": ["Operator"],
+        "operationId": "resumeQueue",
+        "summary": "Resume a paused queue",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Queue resumed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/QueuePauseState" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "slug": "demo-barber",
+                    "queuePaused": false,
+                    "queuePauseReason": null
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/shops/{slug}/queue/{trackingToken}/call": {
+      "post": {
+        "tags": ["Operator"],
+        "operationId": "callQueueCustomer",
+        "summary": "Call a queued customer",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "trackingToken", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Customer called",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/QueueEntry" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": "queue-entry-id",
+                    "trackingToken": "demo-queue-amir",
+                    "sortIndex": 1,
+                    "joinedAt": "2026-06-12T09:21:00.000Z",
+                    "confirmationStatus": "COMING",
+                    "confirmationRequestedAt": "2026-06-12T09:32:00.000Z",
+                    "confirmationRespondedAt": "2026-06-12T09:33:00.000Z",
+                    "calledAt": "2026-06-12T09:35:00.000Z",
+                    "visit": {
+                      "id": "visit-id",
+                      "source": "REMOTE_QUEUE",
+                      "status": "CALLED",
+                      "plannedDurationMin": 20,
+                      "estimatedWaitMin": 0,
+                      "queueJoinedAt": "2026-06-12T09:21:00.000Z",
+                      "customer": {
+                        "id": "customer-id",
+                        "firstName": "Amir",
+                        "phone": "+447400000301"
+                      }
+                    }
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/shops/{slug}/queue/{trackingToken}/start-service": {
+      "post": {
+        "tags": ["Operator"],
+        "operationId": "startService",
+        "summary": "Start service for a queued customer",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "trackingToken", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/InServiceVisit" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": "visit-id",
+                    "status": "IN_SERVICE",
+                    "startedAt": "2026-06-12T09:40:00.000Z",
+                    "plannedDurationMin": 20,
+                    "customer": {
+                      "firstName": "Amir"
+                    }
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/shops/{slug}/queue/{trackingToken}/release-no-show": {
+      "post": {
+        "tags": ["Operator"],
+        "operationId": "releaseQueueNoShow",
+        "summary": "Release a queue customer as no-show and promote the next customer",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "trackingToken", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ReleaseNoShowRequest" },
+              "example": {
+                "reason": "Customer did not arrive when called"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Queue place released",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/ReleaseNoShowResult" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "trackingToken": "demo-queue-amir",
+                    "visitStatus": "NO_SHOW",
+                    "releasedAt": "2026-06-12T09:37:00.000Z",
+                    "reason": "Customer did not arrive when called"
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/ops/shops/{slug}/queue/{trackingToken}/reinstate": {
+      "post": {
+        "tags": ["Operator"],
+        "operationId": "reinstateMissedCustomer",
+        "summary": "Reinstate a recently missed customer once and place them next",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "trackingToken", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ReinstateMissedRequest" },
+              "example": {
+                "reason": "Customer arrived after missed turn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Customer reinstated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/ReinstateMissedResult" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "trackingToken": "demo-queue-amir",
+                    "visitStatus": "READY",
+                    "sortIndex": 1,
+                    "reinstatedAt": "2026-06-12T09:42:00.000Z",
+                    "reason": "Customer arrived after missed turn"
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/ops/shops/{slug}/visits/{visitId}/extend-service": {
+      "post": {
+        "tags": ["Operator"],
+        "operationId": "extendService",
+        "summary": "Extend the current in-service visit duration",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "visitId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ServiceExtensionRequest" },
+              "example": {
+                "durationDeltaMin": 10,
+                "label": "Extra service time",
+                "notes": "Customer added beard trim"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Service extended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/InServiceVisit" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": "visit-id",
+                    "status": "IN_SERVICE",
+                    "startedAt": "2026-06-12T09:40:00.000Z",
+                    "plannedDurationMin": 30,
+                    "customer": {
+                      "firstName": "Amir"
+                    },
+                    "extension": {
+                      "durationDeltaMin": 10,
+                      "label": "Extra service time",
+                      "notes": "Customer added beard trim"
+                    }
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/ops/shops/{slug}/visits/{visitId}/complete-service": {
+      "post": {
+        "tags": ["Operator"],
+        "operationId": "completeService",
+        "summary": "Complete an in-service visit",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "visitId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/InServiceVisit" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": "visit-id",
+                    "status": "COMPLETED",
+                    "startedAt": "2026-06-12T09:40:00.000Z",
+                    "plannedDurationMin": 20,
+                    "customer": {
+                      "firstName": "Amir"
+                    }
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/invitations/{token}": {
+      "get": {
+        "tags": ["Invitations"],
+        "operationId": "getInvitationByToken",
+        "summary": "Load invitation context by token",
+        "parameters": [
+          { "name": "token", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invitation context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/Invitation" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": "invite-id",
+                    "email": "staff@shop.example",
+                    "firstName": "Sam",
+                    "lastName": "Operator",
+                    "role": "STAFF_OPERATOR",
+                    "note": "Front queue operations",
+                    "createdAt": "2026-06-12T09:40:00.000Z",
+                    "expiresAt": "2026-06-19T09:40:00.000Z",
+                    "acceptedAt": null,
+                    "revokedAt": null,
+                    "businessGroup": {
+                      "id": "group-id",
+                      "name": "Fade Yard",
+                      "slug": "q-app-demo-group"
+                    },
+                    "businessLocation": {
+                      "id": "shop-id",
+                      "name": "Fade Yard Soho",
+                      "slug": "demo-barber"
+                    }
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/auth/invitations/{token}/accept": {
+      "post": {
+        "tags": ["Invitations"],
+        "operationId": "acceptInvitation",
+        "summary": "Accept invitation and create account access",
+        "parameters": [
+          { "name": "token", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["password"],
+                "properties": {
+                  "firstName": { "type": "string" },
+                  "lastName": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              },
+              "example": {
+                "firstName": "Sam",
+                "lastName": "Operator",
+                "password": "QappInviteStrong123!"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Invitation accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/InvitationAcceptanceResult" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "invitation": {
+                      "id": "invite-id",
+                      "email": "staff@shop.example",
+                      "firstName": "Sam",
+                      "lastName": "Operator",
+                      "role": "STAFF_OPERATOR",
+                      "note": "Front queue operations",
+                      "createdAt": "2026-06-12T09:40:00.000Z",
+                      "expiresAt": "2026-06-19T09:40:00.000Z",
+                      "acceptedAt": "2026-06-12T09:45:00.000Z",
+                      "revokedAt": null,
+                      "businessGroup": {
+                        "id": "group-id",
+                        "name": "Fade Yard",
+                        "slug": "q-app-demo-group"
+                      },
+                      "businessLocation": {
+                        "id": "shop-id",
+                        "name": "Fade Yard Soho",
+                        "slug": "demo-barber"
+                      }
+                    },
+                    "acceptedUser": {
+                      "id": "user-id",
+                      "email": "staff@shop.example",
+                      "firstName": "Sam",
+                      "lastName": "Operator"
+                    }
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/ops/shops/{slug}/invitations": {
+      "get": {
+        "tags": ["Invitations"],
+        "operationId": "listInvitations",
+        "summary": "List business invitations for one shop",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invitation list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Invitation" }
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Invitation" }
+                    },
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": [],
+                  "items": [],
+                  "meta": { "count": 0, "requestId": "request-id" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Invitations"],
+        "operationId": "createInvitation",
+        "summary": "Create a business invitation",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "role"],
+                "properties": {
+                  "email": { "type": "string" },
+                  "firstName": { "type": "string" },
+                  "lastName": { "type": "string" },
+                  "role": { "type": "string" },
+                  "note": { "type": "string" }
+                }
+              },
+              "example": {
+                "email": "staff@shop.example",
+                "firstName": "Sam",
+                "lastName": "Operator",
+                "role": "STAFF_OPERATOR",
+                "note": "Front queue operations"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Invitation created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/Invitation" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": "invite-id",
+                    "email": "staff@shop.example",
+                    "firstName": "Sam",
+                    "lastName": "Operator",
+                    "role": "STAFF_OPERATOR",
+                    "note": "Front queue operations",
+                    "createdAt": "2026-06-12T09:40:00.000Z",
+                    "expiresAt": "2026-06-19T09:40:00.000Z",
+                    "acceptedAt": null,
+                    "revokedAt": null,
+                    "businessGroup": {
+                      "id": "group-id",
+                      "name": "Fade Yard",
+                      "slug": "q-app-demo-group"
+                    },
+                    "businessLocation": {
+                      "id": "shop-id",
+                      "name": "Fade Yard Soho",
+                      "slug": "demo-barber"
+                    },
+                    "inviteToken": "<dev-token>",
+                    "inviteUrl": "http://127.0.0.1:3000/invite/<dev-token>"
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/business-signups": {
+      "post": {
+        "tags": ["Onboarding"],
+        "operationId": "createBusinessSignup",
+        "summary": "Submit business signup request",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BusinessSignupRequest" },
+              "example": {
+                "businessName": "Camden Chair Studio",
+                "ownerName": "Jordan Miles",
+                "mobileNumber": "+447400000106",
+                "email": "owner@camdenchair.demo",
+                "addressLine1": "88 Parkway",
+                "city": "London",
+                "region": "Greater London",
+                "postalCode": "NW1 7AN",
+                "countryCode": "GB",
+                "industryType": "SALON",
+                "serviceStationsCount": 3,
+                "openingHoursNote": "Mon-Sat 10:00-19:00",
+                "latitude": 51.5387,
+                "longitude": -0.1426,
+                "placeId": "place-demo-123",
+                "geolocationSource": "ADDRESS_GEOCODE",
+                "pinConfirmedAt": "2026-06-12T09:45:00.000Z"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Business signup created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/BusinessSignupResult" },
+                    "item": {},
+                    "meta": { "$ref": "#/components/schemas/Meta" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": "signup-id",
+                    "createdAt": "2026-06-12T09:45:00.000Z",
+                    "updatedAt": "2026-06-12T09:45:00.000Z",
+                    "approvalStatus": "PENDING",
+                    "businessName": "Camden Chair Studio",
+                    "ownerName": "Jordan Miles",
+                    "mobileNumber": "+447400000106",
+                    "email": "owner@camdenchair.demo",
+                    "addressLine1": "88 Parkway",
+                    "addressLine2": null,
+                    "city": "London",
+                    "region": "Greater London",
+                    "postalCode": "NW1 7AN",
+                    "countryCode": "GB",
+                    "industryType": "SALON",
+                    "serviceStationsCount": 3,
+                    "openingHoursNote": "Mon-Sat 10:00-19:00",
+                    "latitude": 51.5387,
+                    "longitude": -0.1426,
+                    "placeId": "place-demo-123",
+                    "geolocationSource": "ADDRESS_GEOCODE",
+                    "pinConfirmedAt": "2026-06-12T09:45:00.000Z",
+                    "approvedAt": null,
+                    "rejectedAt": null,
+                    "rejectionReason": null,
+                    "approvedBusinessGroupId": null,
+                    "approvedLocationId": null
+                  },
+                  "item": {},
+                  "meta": { "requestId": "request-id" }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    }
+  }
+}
