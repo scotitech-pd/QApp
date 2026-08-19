@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 
 import { api, type ShopDetail } from "../api";
-import { colors, space } from "../theme";
-import { BackLink, Button, Card, Field, Loading, Note, Screen } from "../ui";
+import { colors, fonts, space } from "../theme";
+import { BackLink, Blueprint, Button, Field, Kicker, Loading, Note, Screen, Tag } from "../ui";
 
 export function ShopDetailScreen({
   slug,
@@ -62,7 +62,7 @@ export function ShopDetailScreen({
 
   if (!shop && !error) {
     return (
-      <Screen title="Loading..." headerLeft={<BackLink label="Salons" onPress={onBack} />}>
+      <Screen headerLeft={<BackLink label="All salons" onPress={onBack} />} title="Loading...">
         <Loading />
       </Screen>
     );
@@ -70,70 +70,84 @@ export function ShopDetailScreen({
 
   if (!shop) {
     return (
-      <Screen title="Something went wrong" headerLeft={<BackLink label="Salons" onPress={onBack} />}>
+      <Screen headerLeft={<BackLink label="All salons" onPress={onBack} />} title="Something went wrong">
         <Note tone="danger">{error}</Note>
       </Screen>
     );
   }
 
   const waiting = shop.queueLength ?? 0;
-  const mins = shop.estimatedWaitMin;
+  const chairs = shop.serviceStationsCount;
+  const meta = [shop.city, chairs ? `${chairs} chairs` : null].filter(Boolean).join(" · ");
+  const waitTag = shop.queuePaused ? "Paused" : waiting === 0 ? "No wait" : `~${shop.estimatedWaitMin ?? "?"} min wait`;
 
   return (
     <Screen
-      headerLeft={<BackLink label="Salons" onPress={onBack} />}
-      subtitle={[shop.addressLine1, shop.city].filter(Boolean).join(", ") || undefined}
+      headerLeft={<BackLink label="All salons" onPress={onBack} />}
+      headerRight={<Tag label={waitTag} tone={waiting === 0 && !shop.queuePaused ? "accent" : "outline"} />}
+      subtitle={meta || undefined}
       title={shop.name}
     >
-      <Card>
-        <Text style={{ fontSize: 15, color: colors.ink2, fontWeight: "600" }}>Right now</Text>
-        <Text style={{ fontSize: 26, fontWeight: "800", color: colors.ink, marginTop: space(1) }}>
-          {shop.queuePaused
-            ? "Queue is paused"
-            : waiting === 0
-              ? "No wait — walk right in"
-              : `${waiting} waiting · about ${mins ?? "?"} min`}
-        </Text>
-      </Card>
-
       {!challengeId ? (
-        <Card>
-          <Text style={{ fontSize: 18, fontWeight: "700", color: colors.ink, marginBottom: space(3) }}>
-            Hold your place
-          </Text>
-          <Field label="Your first name" onChangeText={setFirstName} placeholder="e.g. Sam" value={firstName} />
+        <>
+          <View style={{ marginBottom: space(2) }}>
+            <Kicker>Your details</Kicker>
+          </View>
+          <Field label="Name" onChangeText={setFirstName} placeholder="e.g. Rahul" value={firstName} />
           <Field
             autoCapitalize="none"
             keyboardType="phone-pad"
-            label="Mobile number"
+            label="Phone"
             onChangeText={setMobileNumber}
-            placeholder="+44 7… "
+            placeholder="10-digit mobile"
             value={mobileNumber}
           />
+          <Blueprint>
+            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+              <Text style={{ fontSize: 13, color: colors.text, fontFamily: fonts.body }}>People ahead of you</Text>
+              <Text style={{ fontSize: 15, fontFamily: fonts.heading, color: colors.text }}>{waiting}</Text>
+            </View>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: space(1) }}>
+              <Text style={{ fontSize: 13, color: colors.text, fontFamily: fonts.body }}>Estimated wait</Text>
+              <Text style={{ fontSize: 15, fontFamily: fonts.heading, color: colors.text }}>
+                {shop.queuePaused
+                  ? "Paused"
+                  : waiting === 0
+                    ? "None — walk right in"
+                    : `~${shop.estimatedWaitMin ?? "?"} min`}
+              </Text>
+            </View>
+          </Blueprint>
           {error ? (
             <View style={{ marginBottom: space(3) }}>
               <Note tone="danger">{error}</Note>
             </View>
           ) : null}
           <Button
+            blueprint
             disabled={shop.queuePaused || firstName.trim().length === 0 || mobileNumber.trim().length < 7}
-            label={shop.queuePaused ? "Queue is paused" : "Join the queue"}
+            label={shop.queuePaused ? "Queue is paused" : "Join queue"}
             loading={busy}
             onPress={() => void startJoin()}
           />
-        </Card>
+          <View style={{ marginTop: space(4) }}>
+            <Note center tone="faint">
+              No service picking — just join. The owner extends your slot if your service runs long.
+            </Note>
+          </View>
+        </>
       ) : (
-        <Card>
-          <Text style={{ fontSize: 18, fontWeight: "700", color: colors.ink, marginBottom: space(2) }}>
-            Enter the code
-          </Text>
+        <>
+          <View style={{ marginBottom: space(2) }}>
+            <Kicker>Verify your phone</Kicker>
+          </View>
           {codePreview ? (
-            <View style={{ marginBottom: space(3) }}>
-              <Note>
-                Test mode — no SMS is sent. Your code is{" "}
-                <Text style={{ fontWeight: "800", fontSize: 18, color: colors.ink }}>{codePreview}</Text>
-              </Note>
-            </View>
+            <Blueprint style={{ alignItems: "center", gap: space(1) }}>
+              <Note center>Test mode — no SMS is sent. Your code is</Note>
+              <Text style={{ fontSize: 34, fontFamily: fonts.heading, color: colors.accent700, letterSpacing: 6 }}>
+                {codePreview}
+              </Text>
+            </Blueprint>
           ) : (
             <View style={{ marginBottom: space(3) }}>
               <Note>We texted a 6-digit code to {mobileNumber}.</Note>
@@ -152,13 +166,13 @@ export function ShopDetailScreen({
               <Note tone="danger">{error}</Note>
             </View>
           ) : null}
-          <Button disabled={code.trim().length < 4} label="Confirm and join" loading={busy} onPress={() => void verifyJoin()} />
+          <Button blueprint disabled={code.trim().length < 4} label="Confirm and join" loading={busy} onPress={() => void verifyJoin()} />
           {codePreview ? (
             <View style={{ marginTop: space(2) }}>
               <Button kind="ghost" label="Use the code above" onPress={() => setCode(codePreview)} small />
             </View>
           ) : null}
-        </Card>
+        </>
       )}
     </Screen>
   );

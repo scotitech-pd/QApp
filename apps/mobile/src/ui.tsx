@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -13,9 +14,58 @@ import {
   type ViewStyle
 } from "react-native";
 
-import { colors, radius, shadowCard, space } from "./theme";
+import { colors, fonts, radius, space } from "./theme";
 
-/* One screen = one job. Big title says the job, subtitle explains it. */
+/* Blueprint design language: square corners, hairline borders,
+ * corner registration ticks, condensed headings, pulsing live tags. */
+
+const TICK = 11;
+const TICK_OFFSET = -6;
+
+function CornerTick({ position }: { position: "tl" | "tr" | "bl" | "br" }) {
+  const anchor: ViewStyle = {
+    position: "absolute",
+    width: TICK,
+    height: TICK,
+    ...(position === "tl" ? { top: TICK_OFFSET, left: TICK_OFFSET } : {}),
+    ...(position === "tr" ? { top: TICK_OFFSET, right: TICK_OFFSET } : {}),
+    ...(position === "bl" ? { bottom: TICK_OFFSET, left: TICK_OFFSET } : {}),
+    ...(position === "br" ? { bottom: TICK_OFFSET, right: TICK_OFFSET } : {})
+  };
+  const barColor = "rgba(29, 31, 32, 0.55)";
+  return (
+    <View pointerEvents="none" style={anchor}>
+      <View style={{ position: "absolute", left: 5, top: 0, width: 1, height: TICK, backgroundColor: barColor }} />
+      <View style={{ position: "absolute", top: 5, left: 0, width: TICK, height: 1, backgroundColor: barColor }} />
+    </View>
+  );
+}
+
+export function Blueprint({
+  children,
+  style,
+  onPress
+}: {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+  onPress?: () => void;
+}) {
+  const frame = (
+    <View style={[styles.blueprint, style]}>
+      {children}
+      <CornerTick position="tl" />
+      <CornerTick position="tr" />
+      <CornerTick position="bl" />
+      <CornerTick position="br" />
+    </View>
+  );
+  if (!onPress) return frame;
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [pressed && { backgroundColor: colors.accent100 }]}>
+      {frame}
+    </Pressable>
+  );
+}
 
 export function Screen({
   title,
@@ -23,7 +73,8 @@ export function Screen({
   children,
   onRefresh,
   refreshing,
-  headerLeft
+  headerLeft,
+  headerRight
 }: {
   title: string;
   subtitle?: string;
@@ -31,6 +82,7 @@ export function Screen({
   onRefresh?: () => void;
   refreshing?: boolean;
   headerLeft?: React.ReactNode;
+  headerRight?: React.ReactNode;
 }) {
   return (
     <ScrollView
@@ -44,7 +96,10 @@ export function Screen({
       style={styles.screen}
     >
       {headerLeft}
-      <Text style={styles.title}>{title}</Text>
+      <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: space(3) }}>
+        <Text style={[styles.title, { flexShrink: 1 }]}>{title}</Text>
+        {headerRight}
+      </View>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       <View style={{ height: space(4) }} />
       {children}
@@ -55,14 +110,14 @@ export function Screen({
 
 export function BackLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable hitSlop={12} onPress={onPress} style={{ marginBottom: space(3) }}>
-      <Text style={{ color: colors.accent, fontSize: 16, fontWeight: "600" }}>‹ {label}</Text>
+    <Pressable hitSlop={12} onPress={onPress} style={{ marginBottom: space(3), alignSelf: "flex-start" }}>
+      <Text style={{ color: colors.accent, fontSize: 14, fontFamily: fonts.bodyMedium }}>← {label}</Text>
     </Pressable>
   );
 }
 
-export function Card({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+export function Kicker({ children }: { children: React.ReactNode }) {
+  return <Text style={styles.kicker}>{children}</Text>;
 }
 
 export function Button({
@@ -71,7 +126,8 @@ export function Button({
   kind = "primary",
   disabled,
   loading,
-  small
+  small,
+  blueprint
 }: {
   label: string;
   onPress: () => void;
@@ -79,29 +135,46 @@ export function Button({
   disabled?: boolean;
   loading?: boolean;
   small?: boolean;
+  blueprint?: boolean;
 }) {
-  const base = [
+  const boxStyle = [
     styles.button,
     small && styles.buttonSmall,
-    kind === "primary" && { backgroundColor: colors.accent },
-    kind === "secondary" && styles.buttonSecondary,
-    kind === "danger" && { backgroundColor: colors.danger },
-    kind === "ghost" && styles.buttonGhost,
+    kind === "primary" && { backgroundColor: colors.accent, borderColor: colors.accent },
+    kind === "secondary" && { backgroundColor: "transparent", borderColor: colors.divider },
+    kind === "danger" && { backgroundColor: "transparent", borderColor: colors.danger },
+    kind === "ghost" && { backgroundColor: "transparent", borderColor: "transparent" },
     (disabled || loading) && { opacity: 0.45 }
   ];
   const labelStyle = [
     styles.buttonLabel,
     small && { fontSize: 14 },
-    (kind === "secondary" || kind === "ghost") && { color: colors.ink }
+    kind === "secondary" && { color: colors.text },
+    kind === "danger" && { color: colors.danger },
+    kind === "ghost" && { color: colors.accent }
   ];
-  return (
-    <Pressable disabled={disabled || loading} onPress={onPress} style={({ pressed }) => [base, pressed && { transform: [{ scale: 0.985 }] }]}>
+  const inner = (
+    <Pressable
+      disabled={disabled || loading}
+      onPress={onPress}
+      style={({ pressed }) => [boxStyle, pressed && !disabled && { opacity: 0.85 }]}
+    >
       {loading ? (
-        <ActivityIndicator color={kind === "secondary" || kind === "ghost" ? colors.ink : "#fff"} />
+        <ActivityIndicator color={kind === "primary" ? colors.bg : colors.text} />
       ) : (
         <Text style={labelStyle}>{label}</Text>
       )}
     </Pressable>
+  );
+  if (!blueprint) return inner;
+  return (
+    <View style={{ position: "relative" }}>
+      {inner}
+      <CornerTick position="tl" />
+      <CornerTick position="tr" />
+      <CornerTick position="bl" />
+      <CornerTick position="br" />
+    </View>
   );
 }
 
@@ -123,14 +196,14 @@ export function Field({
   autoCapitalize?: "none" | "sentences" | "words";
 }) {
   return (
-    <View style={{ gap: space(1.5), marginBottom: space(3) }}>
+    <View style={{ gap: 5, marginBottom: space(3) }}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
         autoCapitalize={autoCapitalize ?? "sentences"}
         keyboardType={keyboardType}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.muted}
+        placeholderTextColor={colors.neutral500}
         secureTextEntry={secureTextEntry}
         style={styles.input}
         value={value}
@@ -139,28 +212,51 @@ export function Field({
   );
 }
 
-export function Pill({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "good" | "warn" | "danger" }) {
-  const bg =
-    tone === "good" ? colors.successSoft : tone === "warn" ? colors.warnSoft : tone === "danger" ? colors.dangerSoft : colors.bgElevated;
-  const fg = tone === "good" ? colors.success : tone === "warn" ? colors.warn : tone === "danger" ? colors.danger : colors.ink2;
+export function Tag({
+  label,
+  tone = "outline",
+  pulse
+}: {
+  label: string;
+  tone?: "accent" | "outline" | "neutral" | "filled";
+  pulse?: boolean;
+}) {
+  const opacity = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!pulse) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.3, duration: 1250, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: 1250, useNativeDriver: true })
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse, opacity]);
+
+  const box = [
+    styles.tag,
+    tone === "accent" && { backgroundColor: colors.accent100 },
+    tone === "outline" && { borderWidth: 1, borderColor: colors.accent },
+    tone === "neutral" && { backgroundColor: colors.neutral100 },
+    tone === "filled" && { backgroundColor: colors.accent }
+  ];
+  const fg =
+    tone === "accent" ? colors.accent800 : tone === "outline" ? colors.accent : tone === "filled" ? colors.bg : colors.neutral800;
   return (
-    <View style={[styles.pill, { backgroundColor: bg }]}>
-      <Text style={{ color: fg, fontSize: 13, fontWeight: "700" }}>{label}</Text>
-    </View>
+    <Animated.View style={[box, pulse && { opacity }]}>
+      <Text style={{ color: fg, fontSize: 11, fontFamily: fonts.bodyMedium, letterSpacing: 0.2 }}>{label}</Text>
+    </Animated.View>
   );
 }
 
-export function Note({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "danger" | "good" }) {
-  const color = tone === "danger" ? colors.danger : tone === "good" ? colors.success : colors.ink2;
-  return <Text style={{ color, fontSize: 15, lineHeight: 21 }}>{children}</Text>;
-}
-
-export function BigStat({ value, caption }: { value: string; caption: string }) {
+export function Note({ children, tone = "neutral", center }: { children: React.ReactNode; tone?: "neutral" | "danger" | "good" | "faint"; center?: boolean }) {
+  const color =
+    tone === "danger" ? colors.danger : tone === "good" ? colors.success : tone === "faint" ? colors.neutral500 : colors.neutral600;
   return (
-    <View style={{ alignItems: "center", gap: space(1) }}>
-      <Text style={styles.bigStat}>{value}</Text>
-      <Text style={{ color: colors.ink2, fontSize: 16 }}>{caption}</Text>
-    </View>
+    <Text style={{ color, fontSize: tone === "faint" ? 12 : 14, lineHeight: 20, fontFamily: fonts.body, textAlign: center ? "center" : "left" }}>
+      {children}
+    </Text>
   );
 }
 
@@ -176,15 +272,15 @@ export function EmptyState({
   onAction?: () => void;
 }) {
   return (
-    <Card style={{ alignItems: "center", gap: space(2), paddingVertical: space(8) }}>
-      <Text style={{ fontSize: 20, fontWeight: "700", color: colors.ink }}>{title}</Text>
-      <Text style={{ color: colors.ink2, fontSize: 15, textAlign: "center", lineHeight: 21 }}>{message}</Text>
+    <Blueprint style={{ alignItems: "center", gap: space(2), paddingVertical: space(8), paddingHorizontal: space(4) }}>
+      <Text style={{ fontSize: 22, fontFamily: fonts.heading, color: colors.text }}>{title}</Text>
+      <Note center>{message}</Note>
       {actionLabel && onAction ? (
         <View style={{ marginTop: space(3), alignSelf: "stretch" }}>
           <Button label={actionLabel} onPress={onAction} />
         </View>
       ) : null}
-    </Card>
+    </Blueprint>
   );
 }
 
@@ -199,39 +295,50 @@ export function Loading() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   screenContent: { padding: space(5), paddingTop: space(4) },
-  title: { fontSize: 28, fontWeight: "800", color: colors.ink, letterSpacing: -0.5 },
-  subtitle: { fontSize: 15, color: colors.ink2, marginTop: space(1), lineHeight: 21 },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+  title: { fontSize: 30, fontFamily: fonts.heading, color: colors.text, lineHeight: 34 },
+  subtitle: { fontSize: 13, color: colors.neutral600, marginTop: space(1), lineHeight: 19, fontFamily: fonts.body },
+  kicker: {
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: colors.neutral600,
+    fontFamily: fonts.bodyMedium
+  },
+  blueprint: {
+    position: "relative",
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: space(4),
-    marginBottom: space(3),
-    ...shadowCard
+    borderColor: colors.divider,
+    borderRadius: radius.none,
+    padding: space(3.5),
+    marginBottom: space(4),
+    backgroundColor: "transparent"
   },
   button: {
-    minHeight: 52,
-    borderRadius: radius.md,
+    minHeight: 48,
+    borderRadius: radius.none,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: space(4)
   },
-  buttonSmall: { minHeight: 38, paddingHorizontal: space(3) },
-  buttonSecondary: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderStrong },
-  buttonGhost: { backgroundColor: "transparent" },
-  buttonLabel: { color: "#fff", fontSize: 17, fontWeight: "700" },
-  fieldLabel: { fontSize: 14, fontWeight: "600", color: colors.ink2 },
+  buttonSmall: { minHeight: 36, paddingHorizontal: space(3) },
+  buttonLabel: { color: colors.bg, fontSize: 16, fontFamily: fonts.heading, letterSpacing: 0.4 },
+  fieldLabel: { fontSize: 12, color: "rgba(29, 31, 32, 0.7)", fontFamily: fonts.body },
   input: {
-    minHeight: 50,
+    minHeight: 44,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.md,
-    paddingHorizontal: space(3.5),
-    fontSize: 16,
-    color: colors.ink,
-    backgroundColor: colors.surface
+    borderColor: colors.divider,
+    borderRadius: radius.none,
+    paddingHorizontal: space(2.5),
+    fontSize: 15,
+    color: colors.text,
+    backgroundColor: colors.surface,
+    fontFamily: fonts.body
   },
-  pill: { paddingHorizontal: space(2.5), paddingVertical: space(1), borderRadius: radius.full, alignSelf: "flex-start" },
-  bigStat: { fontSize: 64, fontWeight: "800", color: colors.ink, letterSpacing: -2 }
+  tag: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: radius.none,
+    alignSelf: "flex-start"
+  }
 });

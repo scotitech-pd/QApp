@@ -1,17 +1,22 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { api, type ShopSummary } from "../api";
-import { colors, space } from "../theme";
-import { Card, Loading, Note, Pill, Screen } from "../ui";
+import { colors, fonts, space } from "../theme";
+import { Blueprint, Loading, Note, Screen, Tag } from "../ui";
 
-function waitLine(shop: ShopSummary) {
-  if (shop.queuePaused) return "Not taking new customers right now";
+function waitLabel(shop: ShopSummary) {
+  if (shop.queuePaused) return "Paused";
   const count = shop.queueLength ?? 0;
-  if (count === 0) return "No wait — walk right in";
-  const mins = shop.estimatedWaitMin;
-  const waitPart = mins != null ? ` · about ${mins} min` : "";
-  return `${count} waiting${waitPart}`;
+  if (count === 0) return "No wait";
+  return shop.estimatedWaitMin != null ? `~${shop.estimatedWaitMin} min wait` : `${count} in queue`;
+}
+
+function waitTone(shop: ShopSummary): "accent" | "outline" | "neutral" {
+  const count = shop.queueLength ?? 0;
+  if (shop.queuePaused) return "neutral";
+  if (count === 0) return "accent";
+  return count >= 5 ? "neutral" : "outline";
 }
 
 export function NearbyScreen({ onOpenShop }: { onOpenShop: (slug: string) => void }) {
@@ -42,31 +47,36 @@ export function NearbyScreen({ onOpenShop }: { onOpenShop: (slug: string) => voi
         setRefreshing(false);
       }}
       refreshing={refreshing}
-      subtitle="Live waits, updated as queues move. Join before you leave home."
-      title="Salons near you"
+      subtitle="Live wait times · tap a salon to join its queue"
+      title="Nearby salons"
     >
       {error ? <Note tone="danger">{error}</Note> : null}
       {!shops && !error ? <Loading /> : null}
       {shops?.map((shop) => (
-        <Pressable key={shop.slug} onPress={() => onOpenShop(shop.slug)}>
-          <Card>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <View style={{ flex: 1, paddingRight: space(2) }}>
-                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.ink }}>{shop.name}</Text>
-                {shop.city ? (
-                  <Text style={{ color: colors.muted, fontSize: 14, marginTop: 2 }}>{shop.city}</Text>
-                ) : null}
-                <Text style={{ color: colors.ink2, fontSize: 15, marginTop: space(2), fontWeight: "600" }}>
-                  {waitLine(shop)}
-                </Text>
-              </View>
-              <Pill label={shop.queuePaused ? "Paused" : "Open"} tone={shop.queuePaused ? "warn" : "good"} />
-            </View>
-          </Card>
-        </Pressable>
+        <Blueprint key={shop.slug} onPress={() => onOpenShop(shop.slug)}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: space(2) }}>
+            <Text style={{ fontSize: 19, fontFamily: fonts.heading, color: colors.text, flexShrink: 1 }}>
+              {shop.name}
+            </Text>
+            <Tag label={waitLabel(shop)} pulse={!shop.queuePaused} tone={waitTone(shop)} />
+          </View>
+          <View style={{ flexDirection: "row", gap: space(3.5), marginTop: space(2) }}>
+            <Text style={{ fontSize: 12, color: colors.neutral600, fontFamily: fonts.body }}>
+              {shop.queueLength ?? 0} in queue
+            </Text>
+            {shop.city ? (
+              <Text style={{ fontSize: 12, color: colors.neutral600, fontFamily: fonts.body, marginLeft: "auto" }}>
+                {shop.city}
+              </Text>
+            ) : null}
+          </View>
+        </Blueprint>
       ))}
-      {shops && shops.length === 0 ? (
-        <Note>No salons are live yet. Pull down to refresh.</Note>
+      {shops && shops.length === 0 ? <Note center>No salons are live yet. Pull down to refresh.</Note> : null}
+      {shops && shops.length > 0 ? (
+        <Note center tone="faint">
+          No account needed. Tap a salon to join its queue.
+        </Note>
       ) : null}
     </Screen>
   );

@@ -1,3 +1,6 @@
+import { Barlow_400Regular, Barlow_500Medium, Barlow_700Bold } from "@expo-google-fonts/barlow";
+import { BarlowCondensed_400Regular, BarlowCondensed_600SemiBold } from "@expo-google-fonts/barlow-condensed";
+import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
@@ -7,7 +10,7 @@ import { QueueScreen } from "./src/screens/QueueScreen";
 import { ShopDetailScreen } from "./src/screens/ShopDetailScreen";
 import { ShopPortalScreen } from "./src/screens/ShopPortalScreen";
 import { StoreProvider, useStore } from "./src/store";
-import { colors, space } from "./src/theme";
+import { colors, fonts, space } from "./src/theme";
 
 type Tab = "salons" | "queue" | "shop";
 
@@ -59,12 +62,14 @@ function Shell() {
                 }}
                 style={styles.tabItem}
               >
-                <Text style={{ fontSize: 22, color: active ? colors.accent : colors.muted }}>{item.glyph}</Text>
+                <Text style={{ fontSize: 20, color: active ? colors.accent700 : colors.neutral500 }}>{item.glyph}</Text>
                 <Text
                   style={{
                     fontSize: 12,
-                    fontWeight: active ? "700" : "500",
-                    color: active ? colors.accent : colors.muted
+                    fontFamily: active ? fonts.bodyMedium : fonts.body,
+                    letterSpacing: 0.4,
+                    textTransform: "uppercase",
+                    color: active ? colors.accent700 : colors.neutral500
                   }}
                 >
                   {item.label}
@@ -79,6 +84,18 @@ function Shell() {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Barlow_400Regular,
+    Barlow_500Medium,
+    Barlow_700Bold,
+    BarlowCondensed_400Regular,
+    BarlowCondensed_600SemiBold
+  });
+
+  if (!fontsLoaded) {
+    return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+  }
+
   return (
     <StoreProvider>
       <StatusBar style="dark" />
@@ -90,7 +107,7 @@ export default function App() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   body: { flex: 1 },
-  tabBarSafe: { backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
+  tabBarSafe: { backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.divider },
   tabBar: { flexDirection: "row", paddingTop: space(2), paddingBottom: space(1) },
   tabItem: { flex: 1, alignItems: "center", gap: 2 }
 });

@@ -4,7 +4,7 @@ import { Text, View } from "react-native";
 import { api, type OpsDashboard } from "../api";
 import { useStore } from "../store";
 import { colors, space } from "../theme";
-import { Button, Card, Field, Loading, Note, Pill, Screen } from "../ui";
+import { Blueprint, Button, Field, Loading, Note, Screen, Tag } from "../ui";
 
 function timeAgo(iso: string) {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
@@ -75,7 +75,7 @@ export function ShopPortalScreen() {
   if (!accessToken) {
     return (
       <Screen subtitle="For salon owners and staff. Customers don't need an account." title="Shop sign in">
-        <Card>
+        <Blueprint>
           <Field
             autoCapitalize="none"
             keyboardType="email-address"
@@ -91,7 +91,7 @@ export function ShopPortalScreen() {
             </View>
           ) : null}
           <Button disabled={!identifier.trim() || !password} label="Sign in" loading={busy} onPress={() => void signIn()} />
-        </Card>
+        </Blueprint>
       </Screen>
     );
   }
@@ -99,7 +99,7 @@ export function ShopPortalScreen() {
   if (!slug) {
     return (
       <Screen subtitle="One-time setup: which shop is this device for?" title="Pick your shop">
-        <Card>
+        <Blueprint>
           <Field
             autoCapitalize="none"
             label="Shop link name"
@@ -108,7 +108,7 @@ export function ShopPortalScreen() {
             value={slugInput}
           />
           <Button disabled={!slugInput.trim()} label="Open my shop" onPress={() => setOpsShopSlug(slugInput.trim())} />
-        </Card>
+        </Blueprint>
         <Button kind="ghost" label="Sign out" onPress={() => setSession(null, null)} small />
       </Screen>
     );
@@ -147,7 +147,7 @@ export function ShopPortalScreen() {
       title={dash.shop.name}
     >
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: space(3) }}>
-        <Pill label={dash.shop.queuePaused ? "Queue paused" : "Queue open"} tone={dash.shop.queuePaused ? "warn" : "good"} />
+        <Tag label={dash.shop.queuePaused ? "Queue paused" : "Queue open"} pulse={!dash.shop.queuePaused} tone={dash.shop.queuePaused ? "neutral" : "accent"} />
         <Button
           kind="secondary"
           label={dash.shop.queuePaused ? "Resume queue" : "Pause queue"}
@@ -167,7 +167,7 @@ export function ShopPortalScreen() {
         <>
           <Text style={sectionStyle}>In the chair</Text>
           {inService.map((visit) => (
-            <Card key={visit.id}>
+            <Blueprint key={visit.id}>
               <View style={rowStyle}>
                 <View>
                   <Text style={nameStyle}>{visit.customer.firstName}</Text>
@@ -180,7 +180,7 @@ export function ShopPortalScreen() {
                   small
                 />
               </View>
-            </Card>
+            </Blueprint>
           ))}
         </>
       ) : null}
@@ -190,7 +190,7 @@ export function ShopPortalScreen() {
       {waiting.map((entry) => {
         const called = Boolean(entry.calledAt);
         return (
-          <Card key={entry.id}>
+          <Blueprint key={entry.id}>
             <View style={rowStyle}>
               <View style={{ flex: 1 }}>
                 <Text style={nameStyle}>{entry.visit.customer.firstName}</Text>
@@ -225,12 +225,12 @@ export function ShopPortalScreen() {
                 />
               )}
             </View>
-          </Card>
+          </Blueprint>
         );
       })}
 
       <Text style={sectionStyle}>Add a walk-in</Text>
-      <Card>
+      <Blueprint>
         <Field label="Customer first name" onChangeText={setWalkInName} placeholder="e.g. Alex" value={walkInName} />
         <Button
           disabled={!walkInName.trim()}
@@ -244,13 +244,13 @@ export function ShopPortalScreen() {
             })
           }
         />
-      </Card>
+      </Blueprint>
 
       {missed.length > 0 ? (
         <>
           <Text style={sectionStyle}>Missed turn</Text>
           {missed.map((entry) => (
-            <Card key={entry.id}>
+            <Blueprint key={entry.id}>
               <View style={rowStyle}>
                 <Text style={nameStyle}>{entry.visit.customer.firstName}</Text>
                 <Button
@@ -261,7 +261,7 @@ export function ShopPortalScreen() {
                   small
                 />
               </View>
-            </Card>
+            </Blueprint>
           ))}
         </>
       ) : null}
