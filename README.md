@@ -55,6 +55,7 @@ Expo is the recommended mobile path for Q-App because it keeps the team in the T
 
 - `apps/web`: Next.js customer and business web foundation
 - `apps/api`: Express API foundation
+- `apps/mobile`: Expo (React Native) customer + shop owner app
 - `prisma`: Prisma schema
 - `docs`: product, UX, and implementation planning docs
 

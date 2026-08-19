@@ -1,0 +1,260 @@
+import { API_BASE_URL } from "./config";
+
+type Json = Record<string, unknown>;
+
+export class ApiRequestError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+async function request<T>(
+  path: string,
+  options: { method?: string; body?: Json; token?: string | null } = {}
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}/v1${path}`, {
+    method: options.method ?? "GET",
+    headers: {
+      "content-type": "application/json",
+      ...(options.token ? { authorization: `Bearer ${options.token}` } : {})
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined
+  });
+
+  let payload: any = null;
+  try {
+    payload = await response.json();
+  } catch {
+    // non-JSON error body
+  }
+
+  if (!response.ok) {
+    const message =
+      (payload && (payload.error as string)) || `Request failed (${response.status})`;
+    throw new ApiRequestError(message, response.status, payload?.code);
+  }
+
+  return (payload?.data ?? payload) as T;
+}
+
+// ---------- Customer types ----------
+
+export type ShopSummary = {
+  id: string;
+  slug: string;
+  name: string;
+  city: string | null;
+  addressLine1: string | null;
+  publicDescription: string | null;
+  industryType?: string;
+  latitude: number | null;
+  longitude: number | null;
+  queuePaused: boolean;
+  queueLength?: number;
+  estimatedWaitMin?: number | null;
+  reviewSummary?: { averageRating: number | null; ratingCount: number };
+};
+
+export type ShopDetail = ShopSummary & {
+  openingHours?: Record<string, string> | { note?: string } | null;
+  serviceStationsCount?: number;
+  reviews?: Array<{
+    id?: string;
+    rating: number;
+    comment: string | null;
+    customerFirstName?: string;
+    customer?: { firstName?: string };
+  }>;
+};
+
+export type JoinStartResult = {
+  challengeId: string;
+  expiresAt: string;
+  message: string;
+  deliveryMode?: string;
+  codePreview?: string;
+  pilotMode?: boolean;
+};
+
+export type QueueStatus = {
+  trackingToken: string;
+  sortIndex?: number;
+  position?: number | null;
+  queueLength?: number;
+  visitStatus: string;
+  estimatedWaitMin: number | null;
+  plannedDurationMin?: number | null;
+  joinedAt?: string;
+  calledAt?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  confirmationStatus?: string;
+  confirmationRequestedAt?: string | null;
+  feedbackSubmitted?: boolean;
+  customer: { firstName: string };
+  shop: {
+    id?: string;
+    slug: string;
+    name: string;
+    city?: string | null;
+    queuePaused: boolean;
+    calledGracePeriodMin?: number;
+  };
+};
+
+export type JoinVerifyResult = {
+  alreadyJoined: boolean;
+  queueStatus: QueueStatus;
+};
+
+// ---------- Owner types ----------
+
+export type SessionUser = {
+  id: string;
+  appRole: string;
+  firstName: string;
+  lastName: string | null;
+  email: string | null;
+  memberships: Array<{ role: string; businessGroup: { id: string; name: string; slug: string } }>;
+  staffProfiles: Array<{
+    id: string;
+    displayName: string;
+    businessLocation: { id: string; name: string; slug: string };
+  }>;
+};
+
+export type LoginResult = {
+  user: SessionUser;
+  tokens: { accessToken: string; refreshToken?: string };
+};
+
+export type OpsQueueEntry = {
+  id: string;
+  trackingToken: string;
+  sortIndex: number;
+  joinedAt: string;
+  confirmationStatus: string;
+  calledAt: string | null;
+  missedAt: string | null;
+  visit: {
+    id: string;
+    source: string;
+    status: string;
+    plannedDurationMin: number | null;
+    estimatedWaitMin: number | null;
+    customer: { id: string; firstName: string; phone: string | null };
+  };
+};
+
+export type OpsDashboard = {
+  shop: {
+    id: string;
+    slug: string;
+    name: string;
+    queuePaused: boolean;
+    queuePauseReason: string | null;
+    queueEnabled: boolean;
+    serviceStationsCount: number;
+    defaultWalkInDurationMin: number;
+  };
+  queueEntries: OpsQueueEntry[];
+  inServiceVisits: Array<{
+    id: string;
+    status: string;
+    startedAt: string | null;
+    plannedDurationMin: number | null;
+    customer: { firstName: string };
+  }>;
+  missedQueueEntries: OpsQueueEntry[];
+  reviewSummary?: { averageRating: number | null; ratingCount: number };
+};
+
+// ---------- Customer endpoints ----------
+
+export const api = {
+  listShops: () => request<ShopSummary[]>("/shops"),
+  getShop: (slug: string) => request<ShopDetail>(`/shops/${slug}`),
+  joinStart: (shopSlug: string, firstName: string, mobileNumber: string) =>
+    request<JoinStartResult>("/queue/join/start", {
+      method: "POST",
+      body: { shopSlug, firstName, mobileNumber }
+    }),
+  joinVerify: (challengeId: string, code: string) =>
+    request<JoinVerifyResult>("/queue/join/verify", {
+      method: "POST",
+      body: { challengeId, code }
+    }),
+  queueStatus: (trackingToken: string) => request<QueueStatus>(`/queue/status/${trackingToken}`),
+  respondArrival: (trackingToken: string, response: "COMING" | "DECLINED") =>
+    request<QueueStatus>(`/queue/status/${trackingToken}/respond-arrival`, {
+      method: "POST",
+      body: { response }
+    }),
+  leaveQueue: (trackingToken: string) =>
+    request<QueueStatus>(`/queue/status/${trackingToken}/leave`, { method: "POST", body: {} }),
+  sendFeedback: (trackingToken: string, rating: number, comment?: string) =>
+    request<unknown>(`/queue/status/${trackingToken}/feedback`, {
+      method: "POST",
+      body: { rating, ...(comment ? { comment } : {}) }
+    }),
+
+  // ---------- Owner endpoints ----------
+
+  login: (identifier: string, password: string) =>
+    request<LoginResult>("/auth/login", {
+      method: "POST",
+      body: { identifier, password, deviceName: "Q-App Mobile", platform: "ios" }
+    }),
+  me: (token: string) => request<SessionUser>("/auth/me", { token }),
+  opsDashboard: (token: string, slug: string) =>
+    request<OpsDashboard>(`/ops/shops/${slug}/dashboard`, { token }),
+  opsCall: (token: string, slug: string, trackingToken: string) =>
+    request<unknown>(`/ops/shops/${slug}/queue/${trackingToken}/call`, {
+      method: "POST",
+      body: {},
+      token
+    }),
+  opsStartService: (token: string, slug: string, trackingToken: string) =>
+    request<unknown>(`/ops/shops/${slug}/queue/${trackingToken}/start-service`, {
+      method: "POST",
+      body: {},
+      token
+    }),
+  opsCompleteService: (token: string, slug: string, visitId: string) =>
+    request<unknown>(`/ops/shops/${slug}/visits/${visitId}/complete-service`, {
+      method: "POST",
+      body: {},
+      token
+    }),
+  opsReleaseNoShow: (token: string, slug: string, trackingToken: string) =>
+    request<unknown>(`/ops/shops/${slug}/queue/${trackingToken}/release-no-show`, {
+      method: "POST",
+      body: {},
+      token
+    }),
+  opsReinstate: (token: string, slug: string, trackingToken: string) =>
+    request<unknown>(`/ops/shops/${slug}/queue/${trackingToken}/reinstate`, {
+      method: "POST",
+      body: {},
+      token
+    }),
+  opsAddWalkIn: (token: string, slug: string, firstName: string, mobileNumber?: string) =>
+    request<unknown>(`/ops/shops/${slug}/walk-ins`, {
+      method: "POST",
+      body: { firstName, ...(mobileNumber ? { mobileNumber } : {}) },
+      token
+    }),
+  opsPauseQueue: (token: string, slug: string, reason?: string) =>
+    request<unknown>(`/ops/shops/${slug}/pause-queue`, {
+      method: "POST",
+      body: reason ? { reason } : {},
+      token
+    }),
+  opsResumeQueue: (token: string, slug: string) =>
+    request<unknown>(`/ops/shops/${slug}/resume-queue`, { method: "POST", body: {}, token })
+};
