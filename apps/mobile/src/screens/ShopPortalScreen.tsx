@@ -1,27 +1,16 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { Text, View } from "react-native";
 
-import { api, type OpsDashboard, type OpsQueueEntry } from "../api";
+import { api, type OpsDashboard } from "../api";
 import { useStore } from "../store";
-import { colors, radius, space } from "../theme";
-import { Body, Button, Card, Eyebrow, Field, Pill, Row, StatBlock, Title } from "../ui";
+import { colors, space } from "../theme";
+import { Button, Card, Field, Loading, Note, Pill, Screen } from "../ui";
 
-const POLL_MS = 5000;
-
-function entryStatusPill(entry: OpsQueueEntry) {
-  switch (entry.visit.status) {
-    case "CONFIRMATION_PENDING":
-      return <Pill label="Asked: coming?" tone="warn" />;
-    case "CALLED":
-    case "READY":
-      return <Pill label="Called" tone="accent" />;
-    default:
-      return entry.visit.source === "WALK_IN" ? (
-        <Pill label="Walk-in" tone="neutral" />
-      ) : (
-        <Pill label="Remote" tone="neutral" />
-      );
-  }
+function timeAgo(iso: string) {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return "just now";
+  if (mins === 1) return "1 min ago";
+  return `${mins} min ago`;
 }
 
 export function ShopPortalScreen() {
@@ -29,376 +18,279 @@ export function ShopPortalScreen() {
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [authBusy, setAuthBusy] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
+  const [slugInput, setSlugInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [slugInput, setSlugInput] = useState(opsShopSlug ?? "");
-  const [dashboard, setDashboard] = useState<OpsDashboard | null>(null);
-  const [dashError, setDashError] = useState<string | null>(null);
-  const [busyAction, setBusyAction] = useState<string | null>(null);
-
+  const [dash, setDash] = useState<OpsDashboard | null>(null);
   const [walkInName, setWalkInName] = useState("");
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const loadDashboard = useCallback(async () => {
-    if (!accessToken || !opsShopSlug) return;
+  const slug = opsShopSlug;
+
+  const load = useCallback(async () => {
+    if (!accessToken || !slug) return;
     try {
-      const item = await api.opsDashboard(accessToken, opsShopSlug);
-      setDashboard(item);
-      setDashError(null);
-    } catch (e) {
-      setDashError(e instanceof Error ? e.message : "Could not load the dashboard.");
+      setError(null);
+      setDash(await api.opsDashboard(accessToken, slug));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load the queue.");
     }
-  }, [accessToken, opsShopSlug]);
+  }, [accessToken, slug]);
 
   useEffect(() => {
-    if (!accessToken || !opsShopSlug) return;
-    void loadDashboard();
-    timerRef.current = setInterval(() => void loadDashboard(), POLL_MS);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [accessToken, opsShopSlug, loadDashboard]);
+    if (!accessToken || !slug) return;
+    void load();
+    const timer = setInterval(() => void load(), 6000);
+    return () => clearInterval(timer);
+  }, [accessToken, slug, load]);
 
   async function signIn() {
-    setAuthError(null);
-    setAuthBusy(true);
+    setBusy(true);
+    setError(null);
     try {
       const result = await api.login(identifier.trim(), password);
       setSession(result.tokens.accessToken, result.user);
-      const staffShop = result.user.staffProfiles[0]?.businessLocation.slug;
-      if (staffShop) {
-        setOpsShopSlug(staffShop);
-        setSlugInput(staffShop);
-      }
-    } catch (e) {
-      setAuthError(e instanceof Error ? e.message : "Sign-in failed.");
+      const staffSlug = result.user.staffProfiles[0]?.businessLocation.slug;
+      if (staffSlug) setOpsShopSlug(staffSlug);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign in failed.");
     } finally {
-      setAuthBusy(false);
+      setBusy(false);
     }
   }
 
-  async function act(name: string, run: () => Promise<unknown>) {
-    setBusyAction(name);
+  async function act(action: () => Promise<unknown>) {
+    setBusy(true);
     try {
-      await run();
-      await loadDashboard();
-    } catch (e) {
-      setDashError(e instanceof Error ? e.message : "Action failed.");
+      await action();
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "That didn't work. Try again.");
     } finally {
-      setBusyAction(null);
+      setBusy(false);
     }
   }
 
-  // ---------- Signed out ----------
-  if (!accessToken || !user) {
+  if (!accessToken) {
     return (
-      <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
-        <Card dark>
-          <Eyebrow text="Shop portal" onDark />
-          <Title onDark size={26} text="Run the floor from your pocket." />
-          <Body
-            onDark
-            text="Sign in with your Q-App owner or staff account to see the live queue and keep it moving."
-          />
-        </Card>
+      <Screen subtitle="For salon owners and staff. Customers don't need an account." title="Shop sign in">
         <Card>
           <Field
             autoCapitalize="none"
-            autoComplete="email"
             keyboardType="email-address"
-            label="Email or phone"
+            label="Email"
             onChangeText={setIdentifier}
             placeholder="owner@yourshop.com"
             value={identifier}
           />
-          <Field
-            label="Password"
-            onChangeText={setPassword}
-            placeholder="Your password"
-            secureTextEntry
-            value={password}
-          />
-          {authError ? <Body style={{ color: colors.danger }} text={authError} /> : null}
-          <Button busy={authBusy} label="Sign in" onPress={() => void signIn()} />
+          <Field label="Password" onChangeText={setPassword} secureTextEntry value={password} />
+          {error ? (
+            <View style={{ marginBottom: space(3) }}>
+              <Note tone="danger">{error}</Note>
+            </View>
+          ) : null}
+          <Button disabled={!identifier.trim() || !password} label="Sign in" loading={busy} onPress={() => void signIn()} />
         </Card>
-      </ScrollView>
+      </Screen>
     );
   }
 
-  // ---------- Signed in, no shop chosen ----------
-  if (!opsShopSlug) {
+  if (!slug) {
     return (
-      <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
+      <Screen subtitle="One-time setup: which shop is this device for?" title="Pick your shop">
         <Card>
-          <Eyebrow text={`Hi ${user.firstName}`} />
-          <Title size={20} text="Which shop are you running?" />
-          {user.staffProfiles.length > 0 ? (
-            user.staffProfiles.map((profile) => (
-              <Button
-                key={profile.id}
-                label={profile.businessLocation.name}
-                onPress={() => setOpsShopSlug(profile.businessLocation.slug)}
-                variant="secondary"
-              />
-            ))
-          ) : (
-            <>
-              <Body text="Enter your shop's link name (the slug from your shop URL)." />
-              <Field
-                autoCapitalize="none"
-                label="Shop slug"
-                onChangeText={setSlugInput}
-                placeholder="your-shop-name"
-                value={slugInput}
-              />
-              <Button
-                disabled={!slugInput.trim()}
-                label="Open dashboard"
-                onPress={() => setOpsShopSlug(slugInput.trim())}
-              />
-            </>
-          )}
-          <Button label="Sign out" onPress={() => setSession(null, null)} variant="ghost" />
+          <Field
+            autoCapitalize="none"
+            label="Shop link name"
+            onChangeText={setSlugInput}
+            placeholder="e.g. demo-barber"
+            value={slugInput}
+          />
+          <Button disabled={!slugInput.trim()} label="Open my shop" onPress={() => setOpsShopSlug(slugInput.trim())} />
         </Card>
-      </ScrollView>
+        <Button kind="ghost" label="Sign out" onPress={() => setSession(null, null)} small />
+      </Screen>
     );
   }
 
-  // ---------- Dashboard ----------
-  const waiting = dashboard?.queueEntries ?? [];
-  const inService = dashboard?.inServiceVisits ?? [];
-  const missed = dashboard?.missedQueueEntries ?? [];
+  if (!dash) {
+    return (
+      <Screen title="Your queue">
+        {error ? (
+          <>
+            <Note tone="danger">{error}</Note>
+            <View style={{ marginTop: space(3) }}>
+              <Button kind="secondary" label="Try a different shop" onPress={() => setOpsShopSlug(null)} small />
+            </View>
+          </>
+        ) : (
+          <Loading />
+        )}
+      </Screen>
+    );
+  }
+
+  const waiting = dash.queueEntries;
+  const inService = dash.inServiceVisits;
+  const missed = dash.missedQueueEntries;
 
   return (
-    <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
-      <Card dark style={{ gap: space(4) }}>
-        <Row style={{ justifyContent: "space-between" }}>
-          <View style={{ flex: 1 }}>
-            <Eyebrow onDark text="Live dashboard" />
-            <Title onDark size={22} text={dashboard?.shop.name ?? opsShopSlug} />
-          </View>
-          {dashboard?.shop.queuePaused ? <Pill label="Paused" tone="warn" /> : <Pill label="Open" tone="good" />}
-        </Row>
-        <Row style={{ gap: space(6) }}>
-          <StatBlock label="Waiting" onDark value={`${waiting.length}`} />
-          <StatBlock label="In service" onDark value={`${inService.length}`} />
-          <StatBlock label="Stations" onDark value={`${dashboard?.shop.serviceStationsCount ?? "-"}`} />
-        </Row>
-        <Row>
-          {dashboard?.shop.queuePaused ? (
-            <Button
-              busy={busyAction === "resume"}
-              label="Resume queue"
-              onPress={() => void act("resume", () => api.opsResumeQueue(accessToken, opsShopSlug))}
-              variant="darkGhost"
-            />
-          ) : (
-            <Button
-              busy={busyAction === "pause"}
-              label="Pause queue"
-              onPress={() => void act("pause", () => api.opsPauseQueue(accessToken, opsShopSlug))}
-              variant="darkGhost"
-            />
-          )}
-          <Button
-            label="Switch shop"
-            onPress={() => {
-              setDashboard(null);
-              setOpsShopSlug(null);
-            }}
-            variant="darkGhost"
-          />
-        </Row>
-      </Card>
+    <Screen
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
+      refreshing={refreshing}
+      subtitle={`Signed in as ${user?.firstName ?? "staff"}`}
+      title={dash.shop.name}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: space(3) }}>
+        <Pill label={dash.shop.queuePaused ? "Queue paused" : "Queue open"} tone={dash.shop.queuePaused ? "warn" : "good"} />
+        <Button
+          kind="secondary"
+          label={dash.shop.queuePaused ? "Resume queue" : "Pause queue"}
+          loading={busy}
+          onPress={() =>
+            void act(() =>
+              dash.shop.queuePaused
+                ? api.opsResumeQueue(accessToken, slug)
+                : api.opsPauseQueue(accessToken, slug)
+            )
+          }
+          small
+        />
+      </View>
 
-      {dashError ? <Body style={{ color: colors.danger }} text={dashError} /> : null}
-
-      <Card>
-        <Eyebrow text="Add a walk-in" />
-        <Row>
-          <View style={{ flex: 1 }}>
-            <Field
-              autoCapitalize="words"
-              label="Customer name"
-              onChangeText={setWalkInName}
-              placeholder="Walk-in customer"
-              value={walkInName}
-            />
-          </View>
-          <Button
-            busy={busyAction === "walkin"}
-            disabled={!walkInName.trim()}
-            label="Add"
-            onPress={() =>
-              void act("walkin", async () => {
-                await api.opsAddWalkIn(accessToken, opsShopSlug, walkInName.trim());
-                setWalkInName("");
-              })
-            }
-            style={{ marginTop: space(6) }}
-          />
-        </Row>
-      </Card>
-
-      <Card>
-        <Eyebrow text={`Queue (${waiting.length})`} />
-        {waiting.length === 0 ? <Body text="No one is waiting right now." /> : null}
-        {waiting.map((entry, index) => (
-          <View key={entry.id} style={styles.entryRow}>
-            <Row style={{ justifyContent: "space-between" }}>
-              <Row>
-                <Text style={styles.entryPosition}>{index + 1}</Text>
+      {inService.length > 0 ? (
+        <>
+          <Text style={sectionStyle}>In the chair</Text>
+          {inService.map((visit) => (
+            <Card key={visit.id}>
+              <View style={rowStyle}>
                 <View>
-                  <Text style={styles.entryName}>{entry.visit.customer.firstName}</Text>
-                  <Text style={styles.entryMeta}>
-                    joined {new Date(entry.joinedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </Text>
+                  <Text style={nameStyle}>{visit.customer.firstName}</Text>
+                  {visit.startedAt ? <Text style={metaStyle}>started {timeAgo(visit.startedAt)}</Text> : null}
                 </View>
-              </Row>
-              {entryStatusPill(entry)}
-            </Row>
-            <Row>
-              {entry.visit.status === "QUEUED" ? (
                 <Button
-                  busy={busyAction === `call-${entry.id}`}
-                  label="Call"
-                  onPress={() =>
-                    void act(`call-${entry.id}`, () =>
-                      api.opsCall(accessToken, opsShopSlug, entry.trackingToken)
-                    )
-                  }
-                  style={styles.rowButton}
+                  label="Done"
+                  loading={busy}
+                  onPress={() => void act(() => api.opsCompleteService(accessToken, slug, visit.id))}
+                  small
                 />
-              ) : null}
-              {entry.visit.status === "CONFIRMATION_PENDING" ||
-              entry.visit.status === "CALLED" ||
-              entry.visit.status === "READY" ? (
-                <>
-                  <Button
-                    busy={busyAction === `start-${entry.id}`}
-                    label="Start service"
-                    onPress={() =>
-                      void act(`start-${entry.id}`, () =>
-                        api.opsStartService(accessToken, opsShopSlug, entry.trackingToken)
-                      )
-                    }
-                    style={styles.rowButton}
-                  />
-                  <Button
-                    busy={busyAction === `noshow-${entry.id}`}
-                    label="No-show"
-                    onPress={() =>
-                      void act(`noshow-${entry.id}`, () =>
-                        api.opsReleaseNoShow(accessToken, opsShopSlug, entry.trackingToken)
-                      )
-                    }
-                    style={styles.rowButton}
-                    variant="secondary"
-                  />
-                </>
-              ) : null}
-            </Row>
-          </View>
-        ))}
-      </Card>
+              </View>
+            </Card>
+          ))}
+        </>
+      ) : null}
 
-      <Card>
-        <Eyebrow text={`In service (${inService.length})`} />
-        {inService.length === 0 ? <Body text="No one is in a chair right now." /> : null}
-        {inService.map((visit) => (
-          <View key={visit.id} style={styles.entryRow}>
-            <Row style={{ justifyContent: "space-between" }}>
-              <View>
-                <Text style={styles.entryName}>{visit.customer.firstName}</Text>
-                <Text style={styles.entryMeta}>
-                  {visit.startedAt
-                    ? `started ${new Date(visit.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                    : "in service"}
+      <Text style={sectionStyle}>Waiting ({waiting.length})</Text>
+      {waiting.length === 0 ? <Note>No one is waiting right now.</Note> : null}
+      {waiting.map((entry) => {
+        const called = Boolean(entry.calledAt);
+        return (
+          <Card key={entry.id}>
+            <View style={rowStyle}>
+              <View style={{ flex: 1 }}>
+                <Text style={nameStyle}>{entry.visit.customer.firstName}</Text>
+                <Text style={metaStyle}>
+                  joined {timeAgo(entry.joinedAt)}
+                  {called ? " · called" : ""}
+                  {entry.confirmationStatus === "COMING" ? " · on their way" : ""}
                 </Text>
               </View>
-              <Button
-                busy={busyAction === `complete-${visit.id}`}
-                label="Complete"
-                onPress={() =>
-                  void act(`complete-${visit.id}`, () =>
-                    api.opsCompleteService(accessToken, opsShopSlug, visit.id)
-                  )
-                }
-                style={styles.rowButton}
-              />
-            </Row>
-          </View>
-        ))}
+              {called ? (
+                <View style={{ gap: space(2) }}>
+                  <Button
+                    label="Start"
+                    loading={busy}
+                    onPress={() => void act(() => api.opsStartService(accessToken, slug, entry.trackingToken))}
+                    small
+                  />
+                  <Button
+                    kind="secondary"
+                    label="No-show"
+                    loading={busy}
+                    onPress={() => void act(() => api.opsReleaseNoShow(accessToken, slug, entry.trackingToken))}
+                    small
+                  />
+                </View>
+              ) : (
+                <Button
+                  label="Call"
+                  loading={busy}
+                  onPress={() => void act(() => api.opsCall(accessToken, slug, entry.trackingToken))}
+                  small
+                />
+              )}
+            </View>
+          </Card>
+        );
+      })}
+
+      <Text style={sectionStyle}>Add a walk-in</Text>
+      <Card>
+        <Field label="Customer first name" onChangeText={setWalkInName} placeholder="e.g. Alex" value={walkInName} />
+        <Button
+          disabled={!walkInName.trim()}
+          kind="secondary"
+          label="Add to queue"
+          loading={busy}
+          onPress={() =>
+            void act(async () => {
+              await api.opsAddWalkIn(accessToken, slug, walkInName.trim());
+              setWalkInName("");
+            })
+          }
+        />
       </Card>
 
       {missed.length > 0 ? (
-        <Card>
-          <Eyebrow text="Recently missed" />
+        <>
+          <Text style={sectionStyle}>Missed turn</Text>
           {missed.map((entry) => (
-            <View key={entry.id} style={styles.entryRow}>
-              <Row style={{ justifyContent: "space-between" }}>
-                <Text style={styles.entryName}>{entry.visit.customer.firstName}</Text>
+            <Card key={entry.id}>
+              <View style={rowStyle}>
+                <Text style={nameStyle}>{entry.visit.customer.firstName}</Text>
                 <Button
-                  busy={busyAction === `reinstate-${entry.id}`}
-                  label="Reinstate"
-                  onPress={() =>
-                    void act(`reinstate-${entry.id}`, () =>
-                      api.opsReinstate(accessToken, opsShopSlug, entry.trackingToken)
-                    )
-                  }
-                  style={styles.rowButton}
-                  variant="secondary"
+                  kind="secondary"
+                  label="Re-add"
+                  loading={busy}
+                  onPress={() => void act(() => api.opsReinstate(accessToken, slug, entry.trackingToken))}
+                  small
                 />
-              </Row>
-            </View>
+              </View>
+            </Card>
           ))}
-        </Card>
+        </>
       ) : null}
 
-      <Button label="Sign out" onPress={() => setSession(null, null)} variant="ghost" />
-    </ScrollView>
+      {error ? <Note tone="danger">{error}</Note> : null}
+
+      <View style={{ marginTop: space(6) }}>
+        <Button kind="ghost" label="Sign out" onPress={() => setSession(null, null)} small />
+      </View>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: colors.bg
-  },
-  content: {
-    padding: space(5),
-    paddingBottom: space(24),
-    gap: space(4)
-  },
-  entryRow: {
-    gap: space(3),
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: space(3)
-  },
-  entryPosition: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.full,
-    backgroundColor: colors.bgElevated,
-    textAlign: "center",
-    lineHeight: 34,
-    fontWeight: "800",
-    color: colors.ink,
-    overflow: "hidden"
-  },
-  entryName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.ink
-  },
-  entryMeta: {
-    fontSize: 12,
-    color: colors.muted
-  },
-  rowButton: {
-    minHeight: 40,
-    paddingVertical: space(2),
-    paddingHorizontal: space(4)
-  }
-});
+const sectionStyle = {
+  fontSize: 14,
+  fontWeight: "700" as const,
+  color: colors.muted,
+  textTransform: "uppercase" as const,
+  letterSpacing: 0.6,
+  marginTop: space(4),
+  marginBottom: space(2)
+};
+
+const rowStyle = {
+  flexDirection: "row" as const,
+  alignItems: "center" as const,
+  justifyContent: "space-between" as const,
+  gap: space(3)
+};
+
+const nameStyle = { fontSize: 17, fontWeight: "700" as const, color: colors.ink };
+const metaStyle = { fontSize: 13, color: colors.muted, marginTop: 2 };

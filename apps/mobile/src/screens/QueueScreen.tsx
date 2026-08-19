@@ -1,278 +1,197 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { Pressable, Text, View } from "react-native";
 
 import { api, type QueueStatus } from "../api";
-import { colors, radius, space } from "../theme";
-import { Body, Button, Card, Eyebrow, Pill, Row, StatBlock, Title } from "../ui";
+import { useStore } from "../store";
+import { colors, space } from "../theme";
+import { BigStat, Button, Card, EmptyState, Loading, Note, Screen } from "../ui";
 
-const TERMINAL_STATUSES = new Set(["COMPLETED", "CANCELLED", "NO_SHOW", "MISSED"]);
-const POLL_MS = 5000;
+const DONE_STATES = new Set(["COMPLETED", "CANCELLED", "MISSED", "NO_SHOW"]);
 
-function positionLabel(status: QueueStatus) {
-  if (status.visitStatus === "IN_SERVICE") return "In service";
-  if (status.visitStatus === "CALLED" || status.visitStatus === "READY") return "You're up";
-  const position = status.position ?? status.sortIndex;
-  if (!position || position <= 1) return "Next";
-  return `#${position}`;
+function Stars({ onRate, rated }: { onRate: (n: number) => void; rated: number | null }) {
+  return (
+    <View style={{ flexDirection: "row", gap: space(2), justifyContent: "center", marginVertical: space(2) }}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Pressable hitSlop={8} key={n} onPress={() => onRate(n)}>
+          <Text style={{ fontSize: 34 }}>{rated != null && n <= rated ? "★" : "☆"}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
 }
 
-function statusHeadline(status: QueueStatus) {
-  switch (status.visitStatus) {
-    case "COMPLETED":
-      return "Thanks for visiting.";
-    case "CANCELLED":
-      return "You left this queue.";
-    case "NO_SHOW":
-    case "MISSED":
-      return "This visit was released.";
-    case "IN_SERVICE":
-      return "You're in the chair.";
-    case "CALLED":
-    case "READY":
-      return "It's your turn - head in.";
-    default:
-      return "Your place is being held.";
-  }
-}
-
-export function QueueScreen({
-  trackingToken,
-  onClear
-}: {
-  trackingToken: string;
-  onClear: () => void;
-}) {
+export function QueueScreen({ onFindSalon }: { onFindSalon: () => void }) {
+  const { trackingToken, setTrackingToken } = useStore();
   const [status, setStatus] = useState<QueueStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busyAction, setBusyAction] = useState<string | null>(null);
-  const [rating, setRating] = useState<number | null>(null);
-  const [feedbackSent, setFeedbackSent] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [rated, setRated] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
+    if (!trackingToken) return;
     try {
-      const item = await api.queueStatus(trackingToken);
-      setStatus(item);
       setError(null);
-      if (TERMINAL_STATUSES.has(item.visitStatus) && timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load your queue status.");
+      setStatus(await api.queueStatus(trackingToken));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load your queue place.");
     }
   }, [trackingToken]);
 
   useEffect(() => {
+    setStatus(null);
+    setRated(null);
+    if (!trackingToken) return;
     void load();
-    timerRef.current = setInterval(() => void load(), POLL_MS);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [load]);
+    const timer = setInterval(() => void load(), 4000);
+    return () => clearInterval(timer);
+  }, [trackingToken, load]);
 
-  async function act(name: string, run: () => Promise<unknown>) {
-    setBusyAction(name);
+  async function respond(response: "COMING" | "DECLINED") {
+    if (!trackingToken) return;
+    setBusy(true);
     try {
-      await run();
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Action failed.");
+      setStatus(await api.respondArrival(trackingToken, response));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send your answer.");
     } finally {
-      setBusyAction(null);
+      setBusy(false);
     }
+  }
+
+  async function leave() {
+    if (!trackingToken) return;
+    setBusy(true);
+    try {
+      await api.leaveQueue(trackingToken);
+      setTrackingToken(null);
+    } catch {
+      setTrackingToken(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function rate(n: number) {
+    if (!trackingToken) return;
+    setRated(n);
+    try {
+      await api.sendFeedback(trackingToken, n);
+    } catch {
+      // rating is best-effort
+    }
+  }
+
+  if (!trackingToken) {
+    return (
+      <Screen subtitle="Join a salon queue and your live place shows here." title="My queue">
+        <EmptyState
+          actionLabel="Find a salon"
+          message="You're not waiting anywhere right now."
+          onAction={onFindSalon}
+          title="No queue yet"
+        />
+      </Screen>
+    );
   }
 
   if (!status) {
     return (
-      <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
-        <Card>
-          <Body text={error ?? "Loading your live status..."} />
-          {error ? <Button label="Find a shop instead" onPress={onClear} variant="secondary" /> : null}
-        </Card>
-      </ScrollView>
+      <Screen title="My queue">
+        {error ? <Note tone="danger">{error}</Note> : <Loading />}
+      </Screen>
     );
   }
 
-  const isTerminal = TERMINAL_STATUSES.has(status.visitStatus);
-  const awaitingArrivalAnswer =
-    status.confirmationStatus === "PENDING" && !!status.confirmationRequestedAt && !isTerminal;
-  const waitMin = status.estimatedWaitMin;
+  const askConfirm = status.confirmationStatus === "PENDING" && status.confirmationRequestedAt;
+  const state = status.visitStatus;
 
   return (
-    <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
-      <Card dark style={{ gap: space(4) }}>
-        <Eyebrow text={status.shop.name} onDark />
-        <Title onDark size={26} text={`${status.customer.firstName}, ${statusHeadline(status)}`} />
+    <Screen
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
+      refreshing={refreshing}
+      subtitle={status.shop.name}
+      title="My queue"
+    >
+      {state === "QUEUED" && !askConfirm ? (
+        <>
+          <Card style={{ paddingVertical: space(8) }}>
+            <BigStat
+              caption={
+                status.estimatedWaitMin != null ? `about ${status.estimatedWaitMin} min to go` : "wait time updating…"
+              }
+              value={status.position != null ? `#${status.position}` : "…"}
+            />
+          </Card>
+          <Note>
+            Do something better with your time — we'll ask you to confirm here when it's nearly your turn.
+          </Note>
+          <View style={{ marginTop: space(4) }}>
+            <Button kind="ghost" label="Leave the queue" loading={busy} onPress={() => void leave()} small />
+          </View>
+        </>
+      ) : null}
 
-        <Row style={{ gap: space(6) }}>
-          <StatBlock label="Your place" onDark value={positionLabel(status)} />
-          <StatBlock
-            label="Est. wait"
-            onDark
-            value={
-              isTerminal
-                ? "-"
-                : waitMin == null || waitMin <= 0
-                  ? "Now"
-                  : `${waitMin} min`
-            }
-          />
-          {typeof status.queueLength === "number" ? (
-            <StatBlock label="In queue" onDark value={`${status.queueLength}`} />
+      {(state === "QUEUED" || state === "CONFIRMATION_PENDING") && askConfirm ? (
+        <Card style={{ gap: space(3), paddingVertical: space(6) }}>
+          <Text style={{ fontSize: 24, fontWeight: "800", color: colors.ink, textAlign: "center" }}>
+            It's nearly your turn. Are you coming?
+          </Text>
+          <Button label="Yes, on my way" loading={busy} onPress={() => void respond("COMING")} />
+          <Button kind="secondary" label="No, remove me" loading={busy} onPress={() => void respond("DECLINED")} />
+        </Card>
+      ) : null}
+
+      {(state === "CALLED" || state === "READY" || state === "CONFIRMATION_PENDING") && !askConfirm ? (
+        <Card style={{ paddingVertical: space(6), alignItems: "center", gap: space(2) }}>
+          <Text style={{ fontSize: 26, fontWeight: "800", color: colors.ink }}>It's your turn</Text>
+          <Note>Head to {status.shop.name} now — they're expecting you.</Note>
+        </Card>
+      ) : null}
+
+      {state === "IN_SERVICE" ? (
+        <Card style={{ paddingVertical: space(6), alignItems: "center", gap: space(2) }}>
+          <Text style={{ fontSize: 26, fontWeight: "800", color: colors.ink }}>You're in the chair</Text>
+          <Note>Enjoy. This page wraps up when you're done.</Note>
+        </Card>
+      ) : null}
+
+      {state === "COMPLETED" ? (
+        <Card style={{ paddingVertical: space(5), gap: space(2) }}>
+          <Text style={{ fontSize: 24, fontWeight: "800", color: colors.ink, textAlign: "center" }}>
+            All done — thanks!
+          </Text>
+          {!status.feedbackSubmitted ? (
+            <>
+              <Note>How was it?</Note>
+              <Stars onRate={(n) => void rate(n)} rated={rated} />
+            </>
           ) : null}
-        </Row>
+          <Button label="Finish" onPress={() => setTrackingToken(null)} />
+        </Card>
+      ) : null}
 
-        {status.shop.queuePaused && !isTerminal ? (
-          <Pill label="Shop paused the queue - your spot is safe" tone="warn" />
-        ) : null}
-      </Card>
-
-      {awaitingArrivalAnswer ? (
-        <Card style={styles.arrivalCard}>
-          <Eyebrow text="The shop is asking" />
-          <Title size={20} text="Are you on your way?" />
-          <Body
-            text={`Answer within ${status.shop.calledGracePeriodMin ?? 5} minutes to keep your place.`}
-          />
+      {DONE_STATES.has(state) && state !== "COMPLETED" ? (
+        <Card style={{ paddingVertical: space(5), gap: space(3) }}>
+          <Text style={{ fontSize: 22, fontWeight: "800", color: colors.ink, textAlign: "center" }}>
+            {state === "MISSED" || state === "NO_SHOW" ? "You missed your turn" : "You left the queue"}
+          </Text>
+          <Note>No problem — you can join again any time.</Note>
           <Button
-            busy={busyAction === "coming"}
-            label="Yes, I'm coming"
-            onPress={() => void act("coming", () => api.respondArrival(trackingToken, "COMING"))}
-          />
-          <Button
-            busy={busyAction === "decline"}
-            label="I can't make it"
-            onPress={() => void act("decline", () => api.respondArrival(trackingToken, "DECLINED"))}
-            variant="secondary"
+            label="Find a salon"
+            onPress={() => {
+              setTrackingToken(null);
+              onFindSalon();
+            }}
           />
         </Card>
       ) : null}
 
-      {!isTerminal ? (
-        <Card>
-          <Eyebrow text="While you wait" />
-          <Body text="Keep this screen open. It refreshes automatically every few seconds - no need to stand in the shop." />
-          <View style={styles.timeline}>
-            {["Joined", "Near your turn", "Called", "In service", "Done"].map((step, index) => {
-              const activeIndex =
-                status.visitStatus === "IN_SERVICE"
-                  ? 3
-                  : status.visitStatus === "CALLED" || status.visitStatus === "READY"
-                    ? 2
-                    : awaitingArrivalAnswer
-                      ? 1
-                      : 0;
-              const isDone = index <= activeIndex;
-              return (
-                <View key={step} style={styles.timelineStep}>
-                  <View style={[styles.timelineDot, isDone && styles.timelineDotDone]} />
-                  <Text style={[styles.timelineLabel, isDone && styles.timelineLabelDone]}>{step}</Text>
-                </View>
-              );
-            })}
-          </View>
-          <Button
-            busy={busyAction === "leave"}
-            label="Leave the queue"
-            onPress={() => void act("leave", () => api.leaveQueue(trackingToken))}
-            variant="secondary"
-          />
-        </Card>
-      ) : (
-        <Card>
-          <Eyebrow text={status.visitStatus === "COMPLETED" ? "All done" : "Queue closed"} />
-          <Title
-            size={20}
-            text={
-              status.visitStatus === "COMPLETED"
-                ? "How was your visit?"
-                : "This visit has ended."
-            }
-          />
-          {status.visitStatus === "COMPLETED" && !feedbackSent && !status.feedbackSubmitted ? (
-            <>
-              <Row>
-                {[1, 2, 3, 4, 5].map((value) => (
-                  <Button
-                    key={value}
-                    label={rating != null && value <= rating ? "★" : "☆"}
-                    onPress={() => setRating(value)}
-                    style={styles.starButton}
-                    variant="ghost"
-                  />
-                ))}
-              </Row>
-              <Button
-                busy={busyAction === "feedback"}
-                disabled={rating == null}
-                label="Send rating"
-                onPress={() =>
-                  void act("feedback", async () => {
-                    if (rating != null) await api.sendFeedback(trackingToken, rating);
-                    setFeedbackSent(true);
-                  })
-                }
-              />
-            </>
-          ) : status.visitStatus === "COMPLETED" ? (
-            <Body text="Thanks - your rating helps the shop and other customers." />
-          ) : (
-            <Body text="You can join again any time the queue is open." />
-          )}
-          <Button label="Find another queue" onPress={onClear} variant="secondary" />
-        </Card>
-      )}
-
-      {error ? <Body style={{ color: colors.danger }} text={error} /> : null}
-    </ScrollView>
+      {error ? <Note tone="danger">{error}</Note> : null}
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: colors.bg
-  },
-  content: {
-    padding: space(5),
-    paddingBottom: space(24),
-    gap: space(4)
-  },
-  arrivalCard: {
-    borderColor: colors.accent,
-    borderWidth: 2
-  },
-  timeline: {
-    gap: space(2),
-    paddingVertical: space(2)
-  },
-  timelineStep: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space(3)
-  },
-  timelineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface
-  },
-  timelineDotDone: {
-    backgroundColor: colors.success,
-    borderColor: colors.success
-  },
-  timelineLabel: {
-    fontSize: 14,
-    color: colors.muted
-  },
-  timelineLabelDone: {
-    color: colors.ink,
-    fontWeight: "600"
-  },
-  starButton: {
-    minHeight: 44,
-    paddingHorizontal: space(2)
-  }
-});
