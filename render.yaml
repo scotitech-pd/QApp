@@ -1,0 +1,26 @@
+# Q-App API — Render blueprint.
+# In Render: New → Blueprint → select this repo. Fill in the two database
+# URLs and the two app URLs when prompted; everything else is preset.
+services:
+  - type: web
+    name: q-app-api
+    runtime: node
+    plan: free
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build --workspace api
+    startCommand: npm run start --workspace api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PILOT_MODE
+        value: "true"
+      - key: AUTH_ACCESS_TOKEN_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false # paste Supabase pooler URL (port 6543, ?pgbouncer=true)
+      - key: DIRECT_URL
+        sync: false # paste Supabase session URL (port 5432)
+      - key: APP_BASE_URL
+        sync: false # your Vercel domain, e.g. https://q-app.vercel.app
+      - key: NEXT_PUBLIC_API_BASE_URL
+        sync: false # this service's own URL once created, e.g. https://q-app-api.onrender.com
