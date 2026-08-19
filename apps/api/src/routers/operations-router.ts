@@ -10,6 +10,8 @@ import {
   completeService,
   extendService,
   getQueueDashboard,
+  getShopInsights,
+  listShopCustomers,
   getShopProfile,
   pauseQueue,
   releaseQueueNoShow,
@@ -169,6 +171,24 @@ export function createOperationsRouter() {
       }
 
       const item = await extendService(getPathParam(req.params.slug), getPathParam(req.params.visitId), parsed.data);
+      sendItem(res, item);
+    })
+  );
+
+  router.get(
+    "/ops/shops/:slug/insights",
+    ...requireOpsAccess,
+    asyncHandler(async (req, res) => {
+      const item = await getShopInsights(getPathParam(req.params.slug));
+      sendItem(res, item);
+    })
+  );
+
+  router.get(
+    "/ops/shops/:slug/customers",
+    ...requireOpsAccess,
+    asyncHandler(async (req, res) => {
+      const item = await listShopCustomers(getPathParam(req.params.slug));
       sendItem(res, item);
     })
   );

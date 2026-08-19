@@ -1351,3 +1351,117 @@ export async function resumeQueue(slug: string) {
     queuePauseReason: updatedLocation.queuePauseReason
   };
 }
+
+// ---------- Owner insights (served counts, busiest hours) ----------
+
+export async function getShopInsights(slug: string) {
+  const location = await findLocationBySlug(slug);
+
+  if (!location) {
+    throw ApiError.notFound("Shop not found.");
+  }
+
+  // Day/week boundaries use server time for the pilot; per-shop timezone
+  // handling comes with multi-region rollout.
+  const now = new Date();
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+  const mondayOffset = (now.getDay() + 6) % 7;
+  const startOfWeek = new Date(startOfDay);
+  startOfWeek.setDate(startOfWeek.getDate() - mondayOffset);
+  const startOfLastWeek = new Date(startOfWeek);
+  startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
+
+  const [completedToday, servedThisWeek, servedLastWeek] = await Promise.all([
+    prisma.visit.findMany({
+      where: {
+        businessLocationId: location.id,
+        status: VisitStatus.COMPLETED,
+        completedAt: { gte: startOfDay }
+      },
+      select: {
+        completedAt: true,
+        actualDurationMin: true,
+        plannedDurationMin: true,
+        source: true
+      }
+    }),
+    prisma.visit.count({
+      where: {
+        businessLocationId: location.id,
+        status: VisitStatus.COMPLETED,
+        completedAt: { gte: startOfWeek }
+      }
+    }),
+    prisma.visit.count({
+      where: {
+        businessLocationId: location.id,
+        status: VisitStatus.COMPLETED,
+        completedAt: { gte: startOfLastWeek, lt: startOfWeek }
+      }
+    })
+  ]);
+
+  const byHourToday = Array.from({ length: 12 }, (_, index) => ({ hour: index + 9, count: 0 }));
+  for (const visit of completedToday) {
+    if (!visit.completedAt) continue;
+    const bucket = byHourToday.find((entry) => entry.hour === visit.completedAt!.getHours());
+    if (bucket) bucket.count += 1;
+  }
+
+  const durations = completedToday
+    .map((visit) => visit.actualDurationMin ?? visit.plannedDurationMin)
+    .filter((minutes): minutes is number => minutes != null);
+
+  return {
+    servedToday: completedToday.length,
+    walkInsToday: completedToday.filter((visit) => visit.source === VisitSource.WALK_IN).length,
+    avgDurationMin:
+      durations.length > 0 ? Math.round(durations.reduce((sum, minutes) => sum + minutes, 0) / durations.length) : null,
+    servedThisWeek,
+    servedLastWeek,
+    byHourToday
+  };
+}
+
+// ---------- Customer records (built from visits, no data entry) ----------
+
+export async function listShopCustomers(slug: string) {
+  const location = await findLocationBySlug(slug);
+
+  if (!location) {
+    throw ApiError.notFound("Shop not found.");
+  }
+
+  const groups = await prisma.visit.groupBy({
+    by: ["customerId"],
+    where: {
+      businessLocationId: location.id,
+      status: VisitStatus.COMPLETED
+    },
+    _count: true,
+    _max: { completedAt: true },
+    orderBy: { _max: { completedAt: "desc" } },
+    take: 100
+  });
+
+  const customerIds = groups.map((group) => group.customerId);
+
+  const customers = await prisma.customer.findMany({
+    where: { id: { in: customerIds } },
+    select: { id: true, firstName: true, phone: true }
+  });
+  const customersById = new Map(customers.map((customer) => [customer.id, customer]));
+
+  return groups.map((group) => {
+    const customer = customersById.get(group.customerId);
+    const phone = customer?.phone;
+    return {
+      customerId: group.customerId,
+      firstName: customer?.firstName ?? "Customer",
+      phoneMasked: phone && phone.length >= 6 ? `${phone.slice(0, 3)}•••••${phone.slice(-3)}` : null,
+      visits: group._count,
+      lastVisitAt: group._max?.completedAt?.toISOString() ?? null
+    };
+  });
+}

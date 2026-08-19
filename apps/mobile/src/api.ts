@@ -174,6 +174,23 @@ export type OpsDashboard = {
   reviewSummary?: { averageRating: number | null; ratingCount: number };
 };
 
+export type ShopInsights = {
+  servedToday: number;
+  walkInsToday: number;
+  avgDurationMin: number | null;
+  servedThisWeek: number;
+  servedLastWeek: number;
+  byHourToday: Array<{ hour: number; count: number }>;
+};
+
+export type ShopCustomerRecord = {
+  customerId: string;
+  firstName: string;
+  phoneMasked: string | null;
+  visits: number;
+  lastVisitAt: string | null;
+};
+
 // ---------- Customer endpoints ----------
 
 export const api = {
@@ -256,5 +273,14 @@ export const api = {
       token
     }),
   opsResumeQueue: (token: string, slug: string) =>
-    request<unknown>(`/ops/shops/${slug}/resume-queue`, { method: "POST", body: {}, token })
+    request<unknown>(`/ops/shops/${slug}/resume-queue`, { method: "POST", body: {}, token }),
+  opsExtendService: (token: string, slug: string, visitId: string) =>
+    request<unknown>(`/ops/shops/${slug}/visits/${visitId}/extend-service`, {
+      method: "POST",
+      body: { durationDeltaMin: 10, label: "+10 min" },
+      token
+    }),
+  opsInsights: (token: string, slug: string) => request<ShopInsights>(`/ops/shops/${slug}/insights`, { token }),
+  opsCustomers: (token: string, slug: string) =>
+    request<ShopCustomerRecord[]>(`/ops/shops/${slug}/customers`, { token })
 };
