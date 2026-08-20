@@ -1,5 +1,15 @@
-import React, { useMemo, useState } from "react";
-import { LayoutAnimation, Modal, Platform, Pressable, Text, UIManager, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Animated,
+  LayoutAnimation,
+  Modal,
+  PanResponder,
+  Platform,
+  Pressable,
+  Text,
+  UIManager,
+  View
+} from "react-native";
 import Svg, { Path, Rect } from "react-native-svg";
 
 import type { ShopSummary } from "../api";
@@ -49,6 +59,156 @@ function Storefront({ size, tint }: { size: number; tint: string }) {
       <Path d="M4.5 11v8.2c0 .7.6 1.3 1.3 1.3h12.4c.7 0 1.3-.6 1.3-1.3V11" stroke={tint} strokeLinecap="round" strokeWidth={1.8} />
       <Rect fill={tint} height={5.4} opacity={0.85} rx={0.8} width={4.2} x={13.2} y={14.2} />
     </Svg>
+  );
+}
+
+function DetailSheet({
+  shop,
+  onClose,
+  onJoin
+}: {
+  shop: ShopSummary;
+  onClose: () => void;
+  onJoin: (slug: string) => void;
+}) {
+  const translateY = useRef(new Animated.Value(620)).current;
+  const backdrop = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(backdrop, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.spring(translateY, { toValue: 0, useNativeDriver: true, damping: 24, stiffness: 300, mass: 0.9 })
+    ]).start();
+  }, [backdrop, translateY]);
+
+  function close(after?: () => void) {
+    Animated.parallel([
+      Animated.timing(backdrop, { toValue: 0, duration: 170, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 620, duration: 210, useNativeDriver: true })
+    ]).start(() => {
+      onClose();
+      after?.();
+    });
+  }
+
+  const pan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_evt, gesture) => gesture.dy > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+      onPanResponderMove: (_evt, gesture) => {
+        if (gesture.dy > 0) translateY.setValue(gesture.dy);
+      },
+      onPanResponderRelease: (_evt, gesture) => {
+        if (gesture.dy > 130 || gesture.vy > 0.7) {
+          close();
+        } else {
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true, damping: 24, stiffness: 300 }).start();
+        }
+      }
+    })
+  ).current;
+
+  return (
+    <Modal animationType="none" onRequestClose={() => close()} transparent visible>
+      <Animated.View style={{ flex: 1, backgroundColor: "rgba(16,24,40,0.5)", opacity: backdrop }}>
+        <Pressable onPress={() => close()} style={{ flex: 1 }} />
+      </Animated.View>
+      <Animated.View
+        {...pan.panHandlers}
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          transform: [{ translateY }],
+          backgroundColor: colors.surface,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          paddingHorizontal: space(5),
+          paddingTop: space(2),
+          paddingBottom: space(10),
+          gap: space(2),
+          ...shadowFloat
+        }}
+      >
+        <View style={{ alignSelf: "center", width: 38, height: 5, borderRadius: 3, backgroundColor: colors.dividerSoft, marginBottom: space(3) }} />
+
+        <View style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 14,
+              backgroundColor: colors.accent100,
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+          >
+            <Storefront size={28} tint={colors.accent700} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text numberOfLines={1} style={{ fontFamily: fonts.heading, fontSize: 22, color: colors.text }}>
+              {shop.name}
+            </Text>
+            {shop.city ? (
+              <Text style={{ fontFamily: fonts.body, fontSize: 13, color: colors.neutral600 }}>{shop.city}</Text>
+            ) : null}
+          </View>
+        </View>
+
+        <View style={{ flexDirection: "row", gap: space(2), marginTop: space(2) }}>
+          {[
+            { label: "Waiting", value: String(shop.queueLength ?? 0) },
+            {
+              label: "Est. wait",
+              value: shop.queuePaused ? "Paused" : (shop.queueLength ?? 0) === 0 ? "None" : `~${shop.estimatedWaitMin ?? "?"} min`
+            },
+            { label: "Distance", value: shortDistance(shop) }
+          ].map((stat) => (
+            <View
+              key={stat.label}
+              style={{
+                flex: 1,
+                backgroundColor: colors.surfaceAlt,
+                borderRadius: radius.md,
+                paddingVertical: space(2.5),
+                alignItems: "center"
+              }}
+            >
+              <Text style={{ fontSize: 10, letterSpacing: 0.8, textTransform: "uppercase", color: colors.neutral600, fontFamily: fonts.bodyMedium }}>
+                {stat.label}
+              </Text>
+              <Text style={{ fontSize: 20, fontFamily: fonts.heading, color: colors.text, marginTop: 2 }}>{stat.value}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={{ marginTop: space(3), gap: space(1) }}>
+          <Pressable
+            disabled={shop.queuePaused}
+            onPress={() => close(() => onJoin(shop.slug))}
+            style={({ pressed }) => [
+              {
+                minHeight: 50,
+                borderRadius: radius.md,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: colors.accent,
+                opacity: shop.queuePaused ? 0.45 : 1,
+                ...shadowSoft
+              },
+              pressed && { transform: [{ scale: 0.98 }] }
+            ]}
+          >
+            <Text style={{ color: "#FFFFFF", fontSize: 16, fontFamily: fonts.heading, letterSpacing: 0.4 }}>
+              {shop.queuePaused ? "Queue is paused" : "Join the queue"}
+            </Text>
+          </Pressable>
+          <Pressable onPress={() => close()} style={{ alignItems: "center", paddingVertical: space(2) }}>
+            <Text style={{ color: colors.neutral600, fontSize: 14, fontFamily: fonts.bodyMedium }}>Close</Text>
+          </Pressable>
+        </View>
+      </Animated.View>
+    </Modal>
   );
 }
 
@@ -242,102 +402,13 @@ export function SalonPathView({
         })}
       </View>
 
-      <Modal animationType="slide" onRequestClose={() => setSelected(null)} transparent visible={selected != null}>
-        <Pressable onPress={() => setSelected(null)} style={{ flex: 1, backgroundColor: "rgba(29,31,32,0.45)" }} />
-        {selected ? (
-          <View
-            style={{
-              backgroundColor: colors.surface,
-              borderTopLeftRadius: radius.xl,
-              borderTopRightRadius: radius.xl,
-              padding: space(5),
-              paddingBottom: space(9),
-              gap: space(2),
-              ...shadowFloat
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
-              <View
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 14,
-                  backgroundColor: colors.accent100,
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}
-              >
-                <Storefront size={28} tint={colors.accent700} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: fonts.heading, fontSize: 22, color: colors.text }} numberOfLines={1}>
-                  {selected.name}
-                </Text>
-                {selected.city ? (
-                  <Text style={{ fontFamily: fonts.body, fontSize: 13, color: colors.neutral600 }}>{selected.city}</Text>
-                ) : null}
-              </View>
-            </View>
-
-            <View style={{ flexDirection: "row", gap: space(2), marginTop: space(2) }}>
-              {[
-                { label: "Waiting", value: String(selected.queueLength ?? 0) },
-                {
-                  label: "Est. wait",
-                  value: selected.queuePaused ? "Paused" : (selected.queueLength ?? 0) === 0 ? "None" : `~${selected.estimatedWaitMin ?? "?"}m`
-                },
-                { label: "Distance", value: shortDistance(selected) }
-              ].map((stat) => (
-                <View
-                  key={stat.label}
-                  style={{
-                    flex: 1,
-                    backgroundColor: colors.surfaceAlt,
-                    borderRadius: radius.md,
-                    paddingVertical: space(2.5),
-                    alignItems: "center"
-                  }}
-                >
-                  <Text style={{ fontSize: 10, letterSpacing: 0.8, textTransform: "uppercase", color: colors.neutral600, fontFamily: fonts.bodyMedium }}>
-                    {stat.label}
-                  </Text>
-                  <Text style={{ fontSize: 20, fontFamily: fonts.heading, color: colors.text, marginTop: 2 }}>{stat.value}</Text>
-                </View>
-              ))}
-            </View>
-
-            <View style={{ marginTop: space(3), gap: space(2) }}>
-              <Pressable
-                disabled={selected.queuePaused}
-                onPress={() => {
-                  const slug = selected.slug;
-                  setSelected(null);
-                  onOpenShop(slug);
-                }}
-                style={({ pressed }) => [
-                  {
-                    minHeight: 50,
-                    borderRadius: radius.md,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: colors.accent,
-                    opacity: selected.queuePaused ? 0.45 : 1,
-                    ...shadowSoft
-                  },
-                  pressed && { transform: [{ scale: 0.98 }] }
-                ]}
-              >
-                <Text style={{ color: "#FFFFFF", fontSize: 16, fontFamily: fonts.heading, letterSpacing: 0.4 }}>
-                  {selected.queuePaused ? "Queue is paused" : "Join the queue"}
-                </Text>
-              </Pressable>
-              <Pressable onPress={() => setSelected(null)} style={{ alignItems: "center", paddingVertical: space(2) }}>
-                <Text style={{ color: colors.neutral600, fontSize: 14, fontFamily: fonts.bodyMedium }}>Close</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
-      </Modal>
+      {selected ? (
+        <DetailSheet
+          onClose={() => setSelected(null)}
+          onJoin={(slug) => onOpenShop(slug)}
+          shop={selected}
+        />
+      ) : null}
 
       {!hasLocation ? (
         <Text style={{ fontSize: 12, color: colors.neutral500, fontFamily: fonts.body, textAlign: "center", marginTop: space(1) }}>
