@@ -2,6 +2,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
+import Svg, { Path as SvgPath, Rect as SvgRect } from "react-native-svg";
 
 import { api, type ShopSummary } from "../api";
 import { colors, fonts, radius, space } from "../theme";
@@ -20,6 +21,45 @@ function waitTone(shop: ShopSummary): "accent" | "outline" | "neutral" {
   if (shop.queuePaused) return "neutral";
   if (count === 0) return "accent";
   return count >= 5 ? "neutral" : "outline";
+}
+
+function QrGlyph() {
+  const s = "#FFFFFF";
+  return (
+    <Svg fill="none" height={22} viewBox="0 0 24 24" width={22}>
+      <SvgRect height={7} rx={1.5} stroke={s} strokeWidth={1.8} width={7} x={3} y={3} />
+      <SvgRect height={7} rx={1.5} stroke={s} strokeWidth={1.8} width={7} x={14} y={3} />
+      <SvgRect height={7} rx={1.5} stroke={s} strokeWidth={1.8} width={7} x={3} y={14} />
+      <SvgPath d="M14 14h3v3h-3zM18 18h3v3h-3zM14 20h1.5M20 14v1.5" stroke={s} strokeWidth={1.8} />
+    </Svg>
+  );
+}
+
+function ScanButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityLabel="Scan a shop QR code"
+      onPress={onPress}
+      style={({ pressed }) => [
+        {
+          width: 44,
+          height: 44,
+          borderRadius: 13,
+          backgroundColor: colors.accent,
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: colors.accent,
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 3
+        },
+        pressed && { transform: [{ scale: 0.92 }] }
+      ]}
+    >
+      <QrGlyph />
+    </Pressable>
+  );
 }
 
 function ScanModal({
@@ -143,17 +183,10 @@ export function NearbyScreen({ onOpenShop }: { onOpenShop: (slug: string) => voi
         setRefreshing(false);
       }}
       refreshing={refreshing}
+      headerRight={<ScanButton onPress={() => setScanOpen(true)} />}
       subtitle="Live wait times · tap a salon to join its queue"
       title="Nearby salons"
     >
-      <View style={{ marginBottom: space(2) }}>
-        <Button blueprint label="Scan shop QR" onPress={() => setScanOpen(true)} />
-        <View style={{ marginTop: space(1.5) }}>
-          <Note center tone="faint">
-            In the shop? Scan the counter code to join right here.
-          </Note>
-        </View>
-      </View>
       <ScanModal onClose={() => setScanOpen(false)} onShop={onOpenShop} visible={scanOpen} />
       {error ? <Note tone="danger">{error}</Note> : null}
       {!shops && !error ? <Loading /> : null}

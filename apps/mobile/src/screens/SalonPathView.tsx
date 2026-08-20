@@ -1,9 +1,9 @@
-import React, { useMemo, useRef, useState } from "react";
-import { Animated, LayoutAnimation, Platform, Pressable, Text, UIManager, View } from "react-native";
-import Svg, { Circle, Path } from "react-native-svg";
+import React, { useMemo, useState } from "react";
+import { LayoutAnimation, Modal, Platform, Pressable, Text, UIManager, View } from "react-native";
+import Svg, { Path, Rect } from "react-native-svg";
 
 import type { ShopSummary } from "../api";
-import { colors, fonts, radius, shadowCard, shadowSoft, space } from "../theme";
+import { colors, fonts, radius, shadowCard, shadowFloat, shadowSoft, space } from "../theme";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -11,27 +11,45 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 
 export type PathSort = "wait" | "distance";
 
-const STOP_HEIGHT = 148;
-const TOP_PAD = 64;
-const NODE_R = 15;
+const TOP_PAD = 56;
+
+/* Deterministic per-shop jitter so the trail feels hand-drawn but stable. */
+function jitter(slug: string) {
+  let hash = 0;
+  for (let i = 0; i < slug.length; i += 1) hash = (hash * 31 + slug.charCodeAt(i)) % 997;
+  return hash / 997; // 0..1
+}
 
 function waitScore(shop: ShopSummary) {
   if (shop.queuePaused) return Number.MAX_SAFE_INTEGER;
   return shop.estimatedWaitMin ?? 0;
 }
 
-function waitLine(shop: ShopSummary) {
-  if (shop.queuePaused) return "Paused — not taking joins";
-  const count = shop.queueLength ?? 0;
-  if (count === 0) return "No wait — walk right in";
-  return `${count} waiting · ~${shop.estimatedWaitMin ?? "?"} min`;
+function shortWait(shop: ShopSummary) {
+  if (shop.queuePaused) return "Paused";
+  if ((shop.queueLength ?? 0) === 0) return "No wait";
+  return `~${shop.estimatedWaitMin ?? "?"} min`;
 }
 
-function distanceLine(shop: ShopSummary) {
+function shortDistance(shop: ShopSummary) {
   const km = shop.distanceKm;
-  if (km == null) return null;
-  if (km < 1) return `${Math.max(50, Math.round(km * 1000 / 50) * 50)} m`;
+  if (km == null) return "—";
+  if (km < 1) return `${Math.max(50, Math.round((km * 1000) / 50) * 50)} m`;
   return `${km.toFixed(1)} km`;
+}
+
+function Storefront({ size, tint }: { size: number; tint: string }) {
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M4 3.5h16l1.5 4.2c0 1.5-1.2 2.7-2.7 2.7-1.2 0-2.2-.8-2.6-1.9-.4 1.1-1.4 1.9-2.6 1.9s-2.2-.8-2.6-1.9c-.4 1.1-1.4 1.9-2.6 1.9S6.2 9.6 5.8 8.5C5.4 9.6 4.4 10.4 3.2 10.4 1.7 10.4.5 9.2.5 7.7L2 3.5h2Z"
+        fill={tint}
+        opacity={0.9}
+      />
+      <Path d="M4.5 11v8.2c0 .7.6 1.3 1.3 1.3h12.4c.7 0 1.3-.6 1.3-1.3V11" stroke={tint} strokeLinecap="round" strokeWidth={1.8} />
+      <Rect fill={tint} height={5.4} opacity={0.85} rx={0.8} width={4.2} x={13.2} y={14.2} />
+    </Svg>
+  );
 }
 
 export function SalonPathView({
@@ -45,14 +63,12 @@ export function SalonPathView({
 }) {
   const [sort, setSort] = useState<PathSort>("wait");
   const [width, setWidth] = useState(0);
+  const [selected, setSelected] = useState<ShopSummary | null>(null);
 
   const stops = useMemo(() => {
     const list = [...shops];
-    if (sort === "wait") {
-      list.sort((a, b) => waitScore(a) - waitScore(b));
-    } else {
-      list.sort((a, b) => (a.distanceKm ?? Number.MAX_SAFE_INTEGER) - (b.distanceKm ?? Number.MAX_SAFE_INTEGER));
-    }
+    if (sort === "wait") list.sort((a, b) => waitScore(a) - waitScore(b));
+    else list.sort((a, b) => (a.distanceKm ?? Number.MAX_SAFE_INTEGER) - (b.distanceKm ?? Number.MAX_SAFE_INTEGER));
     return list.slice(0, 6);
   }, [shops, sort]);
 
@@ -62,25 +78,37 @@ export function SalonPathView({
     setSort(next);
   }
 
-  const height = TOP_PAD + stops.length * STOP_HEIGHT;
+  /* Depth: rank 0 is the biggest marker, then everything shrinks and tightens. */
+  const markerSize = (index: number) => Math.max(34, 60 - index * 6);
+  const gap = (index: number) => Math.max(92, 128 - index * 8);
 
-  // Winding trail: start under "You", then alternate left / right nodes.
-  const nodeX = (index: number) => (index % 2 === 0 ? 0.22 : 0.78) * width;
-  const nodeY = (index: number) => TOP_PAD + index * STOP_HEIGHT + STOP_HEIGHT / 2 - space(6);
+  const centers = useMemo(() => {
+    let y = TOP_PAD + 30;
+    return stops.map((shop, index) => {
+      const j = jitter(shop.slug);
+      const base = index % 2 === 0 ? 0.26 : 0.74;
+      const xFrac = Math.min(0.82, Math.max(0.18, base + (j - 0.5) * 0.22));
+      const cy = y + markerSize(index) / 2;
+      y += gap(index) + markerSize(index) / 2;
+      return { xFrac, cy, j };
+    });
+  }, [stops]);
+
+  const height = (centers[centers.length - 1]?.cy ?? TOP_PAD) + 90;
 
   let d = "";
-  if (width > 0 && stops.length > 0) {
-    const startX = 0.22 * width;
-    d = `M ${startX} ${18}`;
+  if (width > 0 && centers.length > 0) {
+    const startX = 0.26 * width;
     let prevX = startX;
-    let prevY = 18;
-    stops.forEach((_, index) => {
-      const x = nodeX(index);
-      const y = nodeY(index);
-      const midY = (prevY + y) / 2;
-      d += ` C ${prevX} ${midY}, ${x} ${midY}, ${x} ${y}`;
+    let prevY = 16;
+    d = `M ${startX} ${prevY}`;
+    centers.forEach(({ xFrac, cy, j }) => {
+      const x = xFrac * width;
+      const bend = (j - 0.5) * 90; // organic, per-shop curvature
+      const midY = (prevY + cy) / 2;
+      d += ` C ${prevX + bend} ${midY}, ${x - bend} ${midY}, ${x} ${cy}`;
       prevX = x;
-      prevY = y;
+      prevY = cy;
     });
   }
 
@@ -92,7 +120,7 @@ export function SalonPathView({
           backgroundColor: colors.surfaceAlt,
           borderRadius: radius.full,
           padding: 3,
-          marginBottom: space(3)
+          marginBottom: space(2)
         }}
       >
         {(
@@ -132,32 +160,15 @@ export function SalonPathView({
           );
         })}
       </View>
-      {!hasLocation ? (
-        <Text style={{ fontSize: 12, color: colors.neutral500, fontFamily: fonts.body, textAlign: "center", marginBottom: space(2) }}>
-          Allow location to route by distance.
-        </Text>
-      ) : null}
 
       <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={{ height, position: "relative" }}>
         {width > 0 ? (
           <Svg height={height} pointerEvents="none" style={{ position: "absolute", inset: 0 }} width={width}>
-            <Path d={d} fill="none" stroke={colors.accent200} strokeDasharray="1 10" strokeLinecap="round" strokeWidth={3.5} />
-            {stops.map((shop, index) => (
-              <Circle
-                cx={nodeX(index)}
-                cy={nodeY(index)}
-                fill={index === 0 ? colors.accent : colors.surface}
-                key={shop.slug}
-                r={NODE_R}
-                stroke={index === 0 ? colors.accent : colors.accent200}
-                strokeWidth={2}
-              />
-            ))}
+            <Path d={d} fill="none" stroke={colors.accent200} strokeDasharray="1 9" strokeLinecap="round" strokeWidth={3} />
           </Svg>
         ) : null}
 
-        {/* "You are here" origin */}
-        <View style={{ position: "absolute", top: 0, left: width * 0.22 - 60, width: 120, alignItems: "center" }}>
+        <View style={{ position: "absolute", top: 0, left: width * 0.26 - 60, width: 120, alignItems: "center" }}>
           <View
             style={{
               backgroundColor: colors.text,
@@ -174,68 +185,163 @@ export function SalonPathView({
         </View>
 
         {stops.map((shop, index) => {
-          const left = index % 2 === 0;
-          const y = nodeY(index);
-          const dist = distanceLine(shop);
+          const { xFrac, cy } = centers[index];
+          const size = markerSize(index);
+          const x = xFrac * width;
+          const onLeft = xFrac < 0.5;
+          const metric = sort === "wait" ? shortWait(shop) : shortDistance(shop);
+          const first = index === 0;
           return (
-            <View key={shop.slug} style={{ position: "absolute", top: y - 44, left: 0, right: 0 }}>
-              {/* rank number inside the node */}
-              <Text
-                style={{
-                  position: "absolute",
-                  top: 44 - space(6) + 33,
-                  left: nodeX(index) - NODE_R,
-                  width: NODE_R * 2,
-                  textAlign: "center",
-                  fontFamily: fonts.heading,
-                  fontSize: 15,
-                  color: index === 0 ? "#FFFFFF" : colors.accent700
-                }}
-              >
-                {index + 1}
-              </Text>
+            <View key={shop.slug} style={{ position: "absolute", top: cy - size / 2, left: 0, right: 0 }}>
               <Pressable
-                onPress={() => onOpenShop(shop.slug)}
+                accessibilityLabel={`${shop.name}, ${metric}`}
+                onPress={() => setSelected(shop)}
                 style={({ pressed }) => [
                   {
                     position: "absolute",
-                    top: 0,
-                    width: width * 0.56,
-                    ...(left ? { left: width * 0.34 } : { right: width * 0.30 }),
-                    backgroundColor: colors.surface,
-                    borderRadius: radius.lg,
-                    padding: space(3),
+                    left: x - size / 2,
+                    width: size,
+                    height: size,
+                    borderRadius: size * 0.3,
+                    backgroundColor: first ? colors.accent : colors.surface,
+                    alignItems: "center",
+                    justifyContent: "center",
                     ...shadowCard
                   },
-                  index === 0 && { borderWidth: 1.5, borderColor: colors.accent200 },
-                  pressed && { transform: [{ scale: 0.97 }] }
+                  pressed && { transform: [{ scale: 0.92 }] }
                 ]}
               >
-                {index === 0 ? (
-                  <Text style={{ fontSize: 9, letterSpacing: 1, fontFamily: fonts.bodyMedium, color: colors.accent, textTransform: "uppercase", marginBottom: 2 }}>
-                    Best pick
-                  </Text>
-                ) : null}
-                <Text numberOfLines={1} style={{ fontFamily: fonts.heading, fontSize: 17, color: colors.text }}>
-                  {shop.name}
+                <Storefront size={size * 0.58} tint={first ? "#FFFFFF" : colors.accent600} />
+              </Pressable>
+              <Pressable
+                onPress={() => setSelected(shop)}
+                style={{
+                  position: "absolute",
+                  top: size / 2 - 14,
+                  ...(onLeft ? { left: x + size / 2 + space(2) } : { right: width - x + size / 2 + space(2) }),
+                  backgroundColor: colors.surface,
+                  borderRadius: radius.full,
+                  paddingHorizontal: space(2.5),
+                  paddingVertical: 5,
+                  ...shadowSoft,
+                  ...(first ? { borderWidth: 1, borderColor: colors.accent200 } : null)
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: Math.max(11, 14 - index),
+                    fontFamily: fonts.bodyMedium,
+                    color: first ? colors.accent700 : colors.neutral700
+                  }}
+                >
+                  {metric}
                 </Text>
-                <Text style={{ fontSize: 12.5, color: colors.neutral600, fontFamily: fonts.body, marginTop: 2 }}>
-                  {waitLine(shop)}
-                </Text>
-                {dist ? (
-                  <Text style={{ fontSize: 11.5, color: colors.neutral500, fontFamily: fonts.bodyMedium, marginTop: 2 }}>
-                    {dist} away
-                  </Text>
-                ) : null}
               </Pressable>
             </View>
           );
         })}
       </View>
 
-      {shops.length > stops.length ? (
+      <Modal animationType="slide" onRequestClose={() => setSelected(null)} transparent visible={selected != null}>
+        <Pressable onPress={() => setSelected(null)} style={{ flex: 1, backgroundColor: "rgba(29,31,32,0.45)" }} />
+        {selected ? (
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderTopLeftRadius: radius.xl,
+              borderTopRightRadius: radius.xl,
+              padding: space(5),
+              paddingBottom: space(9),
+              gap: space(2),
+              ...shadowFloat
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 14,
+                  backgroundColor: colors.accent100,
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                <Storefront size={28} tint={colors.accent700} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: fonts.heading, fontSize: 22, color: colors.text }} numberOfLines={1}>
+                  {selected.name}
+                </Text>
+                {selected.city ? (
+                  <Text style={{ fontFamily: fonts.body, fontSize: 13, color: colors.neutral600 }}>{selected.city}</Text>
+                ) : null}
+              </View>
+            </View>
+
+            <View style={{ flexDirection: "row", gap: space(2), marginTop: space(2) }}>
+              {[
+                { label: "Waiting", value: String(selected.queueLength ?? 0) },
+                {
+                  label: "Est. wait",
+                  value: selected.queuePaused ? "Paused" : (selected.queueLength ?? 0) === 0 ? "None" : `~${selected.estimatedWaitMin ?? "?"}m`
+                },
+                { label: "Distance", value: shortDistance(selected) }
+              ].map((stat) => (
+                <View
+                  key={stat.label}
+                  style={{
+                    flex: 1,
+                    backgroundColor: colors.surfaceAlt,
+                    borderRadius: radius.md,
+                    paddingVertical: space(2.5),
+                    alignItems: "center"
+                  }}
+                >
+                  <Text style={{ fontSize: 10, letterSpacing: 0.8, textTransform: "uppercase", color: colors.neutral600, fontFamily: fonts.bodyMedium }}>
+                    {stat.label}
+                  </Text>
+                  <Text style={{ fontSize: 20, fontFamily: fonts.heading, color: colors.text, marginTop: 2 }}>{stat.value}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={{ marginTop: space(3), gap: space(2) }}>
+              <Pressable
+                disabled={selected.queuePaused}
+                onPress={() => {
+                  const slug = selected.slug;
+                  setSelected(null);
+                  onOpenShop(slug);
+                }}
+                style={({ pressed }) => [
+                  {
+                    minHeight: 50,
+                    borderRadius: radius.md,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: colors.accent,
+                    opacity: selected.queuePaused ? 0.45 : 1,
+                    ...shadowSoft
+                  },
+                  pressed && { transform: [{ scale: 0.98 }] }
+                ]}
+              >
+                <Text style={{ color: "#FFFFFF", fontSize: 16, fontFamily: fonts.heading, letterSpacing: 0.4 }}>
+                  {selected.queuePaused ? "Queue is paused" : "Join the queue"}
+                </Text>
+              </Pressable>
+              <Pressable onPress={() => setSelected(null)} style={{ alignItems: "center", paddingVertical: space(2) }}>
+                <Text style={{ color: colors.neutral600, fontSize: 14, fontFamily: fonts.bodyMedium }}>Close</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+      </Modal>
+
+      {!hasLocation ? (
         <Text style={{ fontSize: 12, color: colors.neutral500, fontFamily: fonts.body, textAlign: "center", marginTop: space(1) }}>
-          Showing the best {stops.length} — switch to List for all {shops.length}.
+          Allow location to route by distance.
         </Text>
       ) : null}
     </View>
