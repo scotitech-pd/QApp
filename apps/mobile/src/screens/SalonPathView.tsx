@@ -1,18 +1,23 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Dimensions,
   LayoutAnimation,
+  Linking,
   Modal,
   PanResponder,
   Platform,
   Pressable,
+  ScrollView,
+  Share,
   Text,
   UIManager,
   View
 } from "react-native";
 import Svg, { Circle, Ellipse, G, Path, Rect } from "react-native-svg";
 
-import type { ShopSummary } from "../api";
+import { api, type ShopDetail, type ShopSummary } from "../api";
+import { WEB_BASE_URL } from "../config";
 import { colors, fonts, radius, shadowCard, shadowFloat, shadowSoft, space } from "../theme";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -85,31 +90,72 @@ function Storefront({ size, tint }: { size: number; tint: string }) {
   );
 }
 
+function SheetStars({ rating, size = 13 }: { rating: number; size?: number }) {
+  return (
+    <Text style={{ fontSize: size, color: "#D99A3D", letterSpacing: 1 }}>
+      {[1, 2, 3, 4, 5].map((step) => (rating >= step - 0.25 ? "★" : "☆")).join("")}
+    </Text>
+  );
+}
+
+function relativeDay(iso?: string) {
+  if (!iso) return null;
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+  const weeks = Math.floor(days / 7);
+  return weeks === 1 ? "1 week ago" : `${weeks} weeks ago`;
+}
+
+function hoursLines(openingHours: ShopDetail["openingHours"]): string[] {
+  if (!openingHours) return [];
+  if (typeof openingHours === "object" && "note" in openingHours && openingHours.note) return [String(openingHours.note)];
+  return Object.entries(openingHours as Record<string, string>).map(
+    ([day, hours]) => `${day.charAt(0).toUpperCase()}${day.slice(1)}: ${hours}`
+  );
+}
+
+/* Two-detent sheet: opens at half height, drags up to 75% of the screen.
+ * The grabber + header + tiles are the drag zone; everything below lives
+ * in a ScrollView that only scrolls once the sheet is expanded. */
 function DetailSheet({
   shop,
   onClose,
-  onJoin,
-  onInfo
+  onJoin
 }: {
   shop: ShopSummary;
   onClose: () => void;
   onJoin: (slug: string) => void;
-  onInfo: (slug: string) => void;
 }) {
-  const translateY = useRef(new Animated.Value(620)).current;
+  const screenH = Dimensions.get("window").height;
+  const SHEET_H = screenH * 0.75;
+  const HALF_OFFSET = screenH * 0.27;
+
+  const translateY = useRef(new Animated.Value(SHEET_H)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
+  const detentRef = useRef<number>(HALF_OFFSET);
+  const [expanded, setExpanded] = useState(false);
+  const [detail, setDetail] = useState<ShopDetail | null>(null);
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(backdrop, { toValue: 1, duration: 200, useNativeDriver: true }),
-      Animated.spring(translateY, { toValue: 0, useNativeDriver: true, damping: 24, stiffness: 300, mass: 0.9 })
+      Animated.spring(translateY, { toValue: HALF_OFFSET, useNativeDriver: true, damping: 24, stiffness: 300, mass: 0.9 })
     ]).start();
-  }, [backdrop, translateY]);
+    api.getShop(shop.slug).then(setDetail).catch(() => undefined);
+  }, [backdrop, translateY, HALF_OFFSET, shop.slug]);
+
+  function snapTo(offset: number) {
+    detentRef.current = offset;
+    setExpanded(offset === 0);
+    Animated.spring(translateY, { toValue: offset, useNativeDriver: true, damping: 24, stiffness: 300 }).start();
+  }
 
   function close(after?: () => void) {
     Animated.parallel([
       Animated.timing(backdrop, { toValue: 0, duration: 170, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: 620, duration: 210, useNativeDriver: true })
+      Animated.timing(translateY, { toValue: SHEET_H, duration: 210, useNativeDriver: true })
     ]).start(() => {
       onClose();
       after?.();
@@ -118,19 +164,51 @@ function DetailSheet({
 
   const pan = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_evt, gesture) => gesture.dy > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+      onMoveShouldSetPanResponder: (_evt, gesture) => Math.abs(gesture.dy) > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
       onPanResponderMove: (_evt, gesture) => {
-        if (gesture.dy > 0) translateY.setValue(gesture.dy);
+        const next = Math.min(SHEET_H, Math.max(0, detentRef.current + gesture.dy));
+        translateY.setValue(next);
       },
       onPanResponderRelease: (_evt, gesture) => {
-        if (gesture.dy > 130 || gesture.vy > 0.7) {
+        const position = detentRef.current + gesture.dy;
+        if (gesture.vy > 0.9 || position > HALF_OFFSET + 130) {
           close();
+        } else if (gesture.vy < -0.4 || position < HALF_OFFSET / 2) {
+          snapTo(0);
         } else {
-          Animated.spring(translateY, { toValue: 0, useNativeDriver: true, damping: 24, stiffness: 300 }).start();
+          snapTo(HALF_OFFSET);
         }
       }
     })
   ).current;
+
+  const rating = shop.reviewSummary?.averageRating ?? detail?.reviewSummary?.averageRating ?? null;
+  const ratingCount = shop.reviewSummary?.ratingCount ?? detail?.reviewSummary?.ratingCount ?? 0;
+  const reviews = detail?.reviews ?? [];
+  const hours = hoursLines(detail?.openingHours ?? null);
+
+  function openDirections() {
+    if (shop.latitude == null || shop.longitude == null) return;
+    const label = encodeURIComponent(shop.name);
+    const url =
+      Platform.OS === "ios"
+        ? `maps:?daddr=${shop.latitude},${shop.longitude}&q=${label}`
+        : `geo:${shop.latitude},${shop.longitude}?q=${shop.latitude},${shop.longitude}(${label})`;
+    void Linking.openURL(url).catch(() => {
+      void Linking.openURL(`https://maps.google.com/?daddr=${shop.latitude},${shop.longitude}`);
+    });
+  }
+
+  function callShop() {
+    const phone = detail?.phone;
+    if (phone) void Linking.openURL(`tel:${phone.replace(/\s/g, "")}`);
+  }
+
+  function shareShop() {
+    void Share.share({
+      message: `Skip the wait at ${shop.name} — join the queue from your phone: ${WEB_BASE_URL}/shops/${shop.slug}`
+    });
+  }
 
   return (
     <Modal animationType="none" onRequestClose={() => close()} transparent visible>
@@ -138,76 +216,73 @@ function DetailSheet({
         <Pressable onPress={() => close()} style={{ flex: 1 }} />
       </Animated.View>
       <Animated.View
-        {...pan.panHandlers}
         style={{
           position: "absolute",
           left: 0,
           right: 0,
           bottom: 0,
+          height: SHEET_H,
           transform: [{ translateY }],
           backgroundColor: colors.surface,
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,
-          paddingHorizontal: space(5),
-          paddingTop: space(2),
-          paddingBottom: space(10),
-          gap: space(2),
           ...shadowFloat
         }}
       >
-        <View style={{ alignSelf: "center", width: 38, height: 5, borderRadius: 3, backgroundColor: colors.dividerSoft, marginBottom: space(3) }} />
-
-        <View style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
-          <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              backgroundColor: colors.accent100,
-              alignItems: "center",
-              justifyContent: "center"
-            }}
-          >
-            <Storefront size={28} tint={colors.accent700} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text numberOfLines={1} style={{ fontFamily: fonts.heading, fontSize: 22, color: colors.text }}>
-              {shop.name}
-            </Text>
-            {shop.city ? (
-              <Text style={{ fontFamily: fonts.body, fontSize: 13, color: colors.neutral600 }}>{shop.city}</Text>
-            ) : null}
-          </View>
-        </View>
-
-        <View style={{ flexDirection: "row", gap: space(2), marginTop: space(2) }}>
-          {[
-            { label: "Waiting", value: String(shop.queueLength ?? 0) },
-            {
-              label: "Est. wait",
-              value: shop.queuePaused ? "Paused" : (shop.queueLength ?? 0) === 0 ? "None" : `~${shop.estimatedWaitMin ?? "?"} min`
-            },
-            { label: "Distance", value: shortDistance(shop) }
-          ].map((stat) => (
-            <View
-              key={stat.label}
-              style={{
-                flex: 1,
-                backgroundColor: colors.surfaceAlt,
-                borderRadius: radius.md,
-                paddingVertical: space(2.5),
-                alignItems: "center"
-              }}
-            >
-              <Text style={{ fontSize: 10, letterSpacing: 0.8, textTransform: "uppercase", color: colors.neutral600, fontFamily: fonts.bodyMedium }}>
-                {stat.label}
-              </Text>
-              <Text style={{ fontSize: 20, fontFamily: fonts.heading, color: colors.text, marginTop: 2 }}>{stat.value}</Text>
+        {/* Drag zone */}
+        <View {...pan.panHandlers} style={{ paddingHorizontal: space(5), paddingTop: space(2) }}>
+          <View style={{ alignSelf: "center", width: 38, height: 5, borderRadius: 3, backgroundColor: colors.dividerSoft, marginBottom: space(3) }} />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
+            <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: colors.accent100, alignItems: "center", justifyContent: "center" }}>
+              <Storefront size={28} tint={colors.accent700} />
             </View>
-          ))}
+            <View style={{ flex: 1 }}>
+              <Text numberOfLines={1} style={{ fontFamily: fonts.heading, fontSize: 22, color: colors.text }}>
+                {shop.name}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                {rating != null && ratingCount > 0 ? (
+                  <>
+                    <SheetStars rating={rating} />
+                    <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.neutral600 }}>
+                      {rating.toFixed(1)} · {ratingCount} verified
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={{ fontFamily: fonts.body, fontSize: 12, color: colors.neutral500 }}>
+                    {shop.city ?? ""}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+
+          <View style={{ flexDirection: "row", gap: space(2), marginTop: space(3) }}>
+            {[
+              { label: "Waiting", value: String(shop.queueLength ?? 0) },
+              {
+                label: "Est. wait",
+                value: shop.queuePaused ? "Paused" : (shop.queueLength ?? 0) === 0 ? "None" : `~${shop.estimatedWaitMin ?? "?"} min`
+              },
+              { label: "Distance", value: shortDistance(shop) }
+            ].map((stat) => (
+              <View key={stat.label} style={{ flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, paddingVertical: space(2.5), alignItems: "center" }}>
+                <Text style={{ fontSize: 10, letterSpacing: 0.8, textTransform: "uppercase", color: colors.neutral600, fontFamily: fonts.bodyMedium }}>
+                  {stat.label}
+                </Text>
+                <Text style={{ fontSize: 20, fontFamily: fonts.heading, color: colors.text, marginTop: 2 }}>{stat.value}</Text>
+              </View>
+            ))}
+          </View>
         </View>
 
-        <View style={{ marginTop: space(3), gap: space(1) }}>
+        {/* Scrolling content */}
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: space(5), paddingTop: space(3), paddingBottom: space(12) }}
+          scrollEnabled={expanded}
+          showsVerticalScrollIndicator={expanded}
+          style={{ flex: 1 }}
+        >
           <Pressable
             disabled={shop.queuePaused}
             onPress={() => close(() => onJoin(shop.slug))}
@@ -228,13 +303,101 @@ function DetailSheet({
               {shop.queuePaused ? "Queue is paused" : "Join the queue"}
             </Text>
           </Pressable>
-          <Pressable onPress={() => close(() => onInfo(shop.slug))} style={{ alignItems: "center", paddingVertical: space(2) }}>
-            <Text style={{ color: colors.accent700, fontSize: 14, fontFamily: fonts.bodyMedium }}>View details, ratings & reviews</Text>
-          </Pressable>
-          <Pressable onPress={() => close()} style={{ alignItems: "center", paddingVertical: space(1) }}>
-            <Text style={{ color: colors.neutral600, fontSize: 14, fontFamily: fonts.bodyMedium }}>Close</Text>
-          </Pressable>
-        </View>
+          {!expanded ? (
+            <Pressable onPress={() => snapTo(0)} style={{ paddingVertical: space(2), marginTop: space(1) }}>
+              <Text style={{ textAlign: "center", fontSize: 14, color: colors.accent700, fontFamily: fonts.bodyMedium }}>
+                View details, ratings & reviews ↑
+              </Text>
+            </Pressable>
+          ) : null}
+
+          <View style={{ flexDirection: "row", gap: space(2), marginTop: space(3) }}>
+            {[
+              { label: "Directions", action: openDirections, enabled: shop.latitude != null },
+              { label: "Call", action: callShop, enabled: Boolean(detail?.phone) },
+              { label: "Share", action: shareShop, enabled: true }
+            ].map((item) => (
+              <Pressable
+                disabled={!item.enabled}
+                key={item.label}
+                onPress={item.action}
+                style={({ pressed }) => [
+                  {
+                    flex: 1,
+                    minHeight: 42,
+                    borderRadius: radius.md,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: colors.surfaceAlt,
+                    opacity: item.enabled ? 1 : 0.4
+                  },
+                  pressed && { transform: [{ scale: 0.96 }] }
+                ]}
+              >
+                <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.accent700 }}>{item.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {detail?.publicDescription || hours.length > 0 ? (
+            <View style={{ marginTop: space(4) }}>
+              <Text style={{ fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: colors.neutral600, fontFamily: fonts.bodyMedium, marginBottom: space(2) }}>
+                About
+              </Text>
+              {detail?.publicDescription ? (
+                <Text style={{ fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.ink2 }}>
+                  {detail.publicDescription}
+                </Text>
+              ) : null}
+              {hours.length > 0 ? (
+                <View style={{ marginTop: space(2) }}>
+                  <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.neutral700, marginBottom: 2 }}>Opening hours</Text>
+                  {hours.map((line) => (
+                    <Text key={line} style={{ fontFamily: fonts.body, fontSize: 13, lineHeight: 20, color: colors.neutral600 }}>
+                      {line}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
+          <View style={{ marginTop: space(4), flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginBottom: space(2) }}>
+            <Text style={{ fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: colors.neutral600, fontFamily: fonts.bodyMedium }}>
+              Reviews
+            </Text>
+            <Text style={{ fontSize: 11, color: colors.success, fontFamily: fonts.bodyMedium }}>✓ Verified visits only</Text>
+          </View>
+          {reviews.length === 0 ? (
+            <Text style={{ fontFamily: fonts.body, fontSize: 13, lineHeight: 19, color: colors.neutral500, textAlign: "center", paddingVertical: space(3) }}>
+              No written reviews yet — ratings come only from completed visits.
+            </Text>
+          ) : (
+            reviews.slice(0, 8).map((review, index) => {
+              const name = review.customerName ?? review.customerFirstName ?? review.customer?.firstName ?? "Customer";
+              const when = relativeDay(review.createdAt);
+              return (
+                <View key={review.id ?? index} style={{ backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: space(3), marginBottom: space(2) }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.text }}>{name}</Text>
+                    <SheetStars rating={review.rating} size={12} />
+                  </View>
+                  {review.comment ? (
+                    <Text style={{ fontFamily: fonts.body, fontSize: 13.5, lineHeight: 20, color: colors.ink2, marginTop: 4 }}>
+                      {review.comment}
+                    </Text>
+                  ) : null}
+                  {when ? <Text style={{ fontFamily: fonts.body, fontSize: 11, color: colors.neutral500, marginTop: 4 }}>{when}</Text> : null}
+                </View>
+              );
+            })
+          )}
+          {reviews.length > 0 ? (
+            <Text style={{ fontFamily: fonts.body, fontSize: 12, color: colors.neutral500, textAlign: "center", marginTop: space(1) }}>
+              Every rating comes from a real completed visit — no anonymous reviews.
+            </Text>
+          ) : null}
+        </ScrollView>
       </Animated.View>
     </Modal>
   );
@@ -243,13 +406,11 @@ function DetailSheet({
 export function SalonPathView({
   shops,
   hasLocation,
-  onOpenShop,
-  onOpenInfo
+  onOpenShop
 }: {
   shops: ShopSummary[];
   hasLocation: boolean;
   onOpenShop: (slug: string) => void;
-  onOpenInfo: (slug: string) => void;
 }) {
   const [sort, setSort] = useState<PathSort>("wait");
   const [width, setWidth] = useState(0);
@@ -471,7 +632,6 @@ export function SalonPathView({
       {selected ? (
         <DetailSheet
           onClose={() => setSelected(null)}
-          onInfo={(slug) => onOpenInfo(slug)}
           onJoin={(slug) => onOpenShop(slug)}
           shop={selected}
         />

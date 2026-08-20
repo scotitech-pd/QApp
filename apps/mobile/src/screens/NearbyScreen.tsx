@@ -233,7 +233,7 @@ export function NearbyScreen({
         </View>
       ) : null}
       {shops && shops.length > 0 && view === "path" ? (
-        <SalonPathView hasLocation={coords != null} onOpenInfo={onOpenInfo} onOpenShop={onOpenShop} shops={shops} />
+        <SalonPathView hasLocation={coords != null} onOpenShop={onOpenShop} shops={shops} />
       ) : null}
       {view === "list" && shops?.map((shop) => (
         <Blueprint key={shop.slug} onPress={() => onOpenInfo(shop.slug)}>
