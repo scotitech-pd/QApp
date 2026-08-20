@@ -1476,3 +1476,34 @@ code.inline {
   font-size: 0.92rem;
   border-radius: var(--radius-md);
 }
+
+/* -------- staff one-pager -------- */
+
+.staff-guide-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  text-align: left;
+  width: 100%;
+}
+
+.staff-guide-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 3px solid var(--accent);
+  padding-left: var(--space-3);
+}
+
+.staff-guide-list strong {
+  font-size: 1.05rem;
+}
+
+.staff-guide-list span {
+  color: var(--ink-2);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}

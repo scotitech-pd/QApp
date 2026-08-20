@@ -94,8 +94,9 @@ function SegTabs({ tab, onChange }: { tab: OwnerTab; onChange: (next: OwnerTab) 
 export function ShopPortalScreen() {
   const { accessToken, user, setSession, opsShopSlug, setOpsShopSlug } = useStore();
 
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
+  // Dev builds prefill the seeded demo staff login so simulator demos are one tap.
+  const [identifier, setIdentifier] = useState(__DEV__ ? "staff@fadeyard.demo" : "");
+  const [password, setPassword] = useState(__DEV__ ? "QappStaff123!" : "");
   const [slugInput, setSlugInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

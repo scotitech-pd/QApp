@@ -1409,9 +1409,11 @@ export async function getShopInsights(slug: string) {
     if (bucket) bucket.count += 1;
   }
 
+  // Ignore absurd durations (forgotten "Done" overnight) so one stale visit
+  // cannot poison the average shown to the owner.
   const durations = completedToday
     .map((visit) => visit.actualDurationMin ?? visit.plannedDurationMin)
-    .filter((minutes): minutes is number => minutes != null);
+    .filter((minutes): minutes is number => minutes != null && minutes > 0 && minutes <= 480);
 
   return {
     servedToday: completedToday.length,

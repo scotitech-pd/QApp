@@ -53,9 +53,9 @@ Status: ✅ done · 🔄 in progress · ⬜ todo · Owner: F = Founder, C = Clau
 ### Sprint 2 — Shop readiness, LAN (Aug 25–28)
 | ID | Module | Item | Owner | Status |
 |---|---|---|---|---|
-| S2.1 | Owner | Shop-device drill: owner app signed in, walk-in add, pause, extend, done — staff does it unaided | F | ⬜ |
-| S2.2 | Web/owner | Print final counter sign (S1.2 output) + 5-action staff one-pager | F | ⬜ |
-| S2.3 | API | Stall guard decision: observe in drill; if staff forget "Done", spec auto-complete timer for Sprint 4 | F+C | ⬜ |
+| S2.1 | Owner | Shop-device drill — technical half done in simulator: Done→served-today tick, Call→Start rotation, +10 min extend (20→30m), walk-in Sunil added, missed-turn auto-promotion observed. Staff-unaided half stays with founder | F+C | 🔄 |
+| S2.2 | Web/owner | Staff one-pager built at `/ops/shops/<slug>/staff-guide` (print-ready, five actions + missed-turn/+10 min notes). Founder prints both | F+C | 🔄 |
+| S2.3 | API | Stall guard: drill surfaced a seed visit "in chair 98057 min" — exactly the forgotten-Done failure. Spec below; insights now clamp duration outliers (≤8h) | C | ✅ |
 | S2.4 | Ops | D2 paperwork: start WhatsApp Business / MSG91 DLT registration (weeks of lead time) | F | ⬜ |
 | S2.5 | Gate | **G0**: full loop with zero laptop involvement on shop Wi-Fi | F+C | ⬜ |
 
@@ -80,6 +80,14 @@ Status: ✅ done · 🔄 in progress · ⬜ todo · Owner: F = Founder, C = Clau
 | S4.5 | Mobile | Release APK + TestFlight via Scotitech account; Play internal ($25) |
 | S4.6 | Growth | Onboard shops 2–10, walkable radius |
 | S4.7 | Native | Android App Links / iOS Universal Links on the domain, so the OS camera opens the installed app directly from the same QR (no scanner needed) |
+
+## Stall guard spec (S2.3 output, build in Sprint 4)
+
+Observed in the Sprint 2 drill: a visit left IN_SERVICE indefinitely ("started 98057 min ago") because nobody tapped Done. Rules:
+
+1. Dashboard highlight: any in-chair visit past 2× its slot shows amber with a "Still going? +10 min / Done" nudge.
+2. Auto-complete: at closing time (or 3× slot, whichever first) the visit auto-completes with `autoCompleted: true` so records stay truthful without staff action.
+3. Insights already ignore durations >8h when averaging (shipped).
 
 ## Full user journey (pilot, LAN) — the verification script
 

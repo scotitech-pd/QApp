@@ -185,7 +185,8 @@ export function Field({
   placeholder,
   keyboardType,
   secureTextEntry,
-  autoCapitalize
+  autoCapitalize,
+  autoCorrect = false
 }: {
   label: string;
   value: string;
@@ -194,12 +195,15 @@ export function Field({
   keyboardType?: KeyboardTypeOptions;
   secureTextEntry?: boolean;
   autoCapitalize?: "none" | "sentences" | "words";
+  autoCorrect?: boolean;
 }) {
   return (
     <View style={{ gap: 5, marginBottom: space(3) }}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
         autoCapitalize={autoCapitalize ?? "sentences"}
+        autoCorrect={autoCorrect}
+        spellCheck={autoCorrect}
         keyboardType={keyboardType}
         onChangeText={onChangeText}
         placeholder={placeholder}
