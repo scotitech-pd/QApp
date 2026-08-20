@@ -28,7 +28,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "OnQ uses the camera to scan a shop's QR code so you can join its queue."
+        }
+      ]
     ]
   }
 }

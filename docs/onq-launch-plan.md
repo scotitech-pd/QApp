@@ -4,7 +4,7 @@ Written 2026-08-20 · Supersedes conflicting details in execution-plan.md · Nam
 
 ## Product law (locked)
 
-1. **Customers join by scanning a QR. No app install required, ever.** The QR opens the shop's web page; join takes name + phone. The native customer app exists for regulars, not as a gate.
+1. **QR is the universal entry point; the app is the preferred surface.** Scanning the counter QR joins via the bare-minimum web page (join, track, confirm — nothing else) so nobody is ever forced to install. The OnQ app is the full experience — its home screen has **Scan shop QR**, so in-shop customers scan the same code and join through the app. Web fallback stays minimal by design; richness lives in the app.
 2. **Every surface must be understandable by a first-time user with zero explanation.** If a screen needs a tutorial, the screen is wrong.
 3. **LAN first.** Everything is proven on local network (Mac + phones on shop/home Wi-Fi) before any hosting spend.
 
@@ -48,6 +48,7 @@ Status: ✅ done · 🔄 in progress · ⬜ todo · Owner: F = Founder, C = Clau
 | S1.3 | Web/customer | "Your turn" alert on tracking page: full-screen state + chime + vibration + flashing title + "keep page open" banner | C | ⬜ |
 | S1.4 | Web/customer | QR-entry polish: shop page leads with join card, wait summary above the fold on a phone | C | ⬜ |
 | S1.5 | QA | Two-phone LAN test via real QR scan: join on phone A, run floor on phone B, full loop incl. no-show branch | F+C | ⬜ |
+| S1.6 | Native | **Scan shop QR** on app home (expo-camera): scan counter code → shop opens in-app → join through app | C | ✅ |
 
 ### Sprint 2 — Shop readiness, LAN (Aug 25–28)
 | ID | Module | Item | Owner | Status |
@@ -78,6 +79,7 @@ Status: ✅ done · 🔄 in progress · ⬜ todo · Owner: F = Founder, C = Clau
 | S4.4 | Owner | Queue reorder (drag or up/down) |
 | S4.5 | Mobile | Release APK + TestFlight via Scotitech account; Play internal ($25) |
 | S4.6 | Growth | Onboard shops 2–10, walkable radius |
+| S4.7 | Native | Android App Links / iOS Universal Links on the domain, so the OS camera opens the installed app directly from the same QR (no scanner needed) |
 
 ## Full user journey (pilot, LAN) — the verification script
 
