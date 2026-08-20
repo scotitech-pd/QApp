@@ -57,6 +57,7 @@ export type ShopSummary = {
   queuePaused: boolean;
   queueLength?: number;
   estimatedWaitMin?: number | null;
+  distanceKm?: number | null;
   reviewSummary?: { averageRating: number | null; ratingCount: number };
 };
 
@@ -194,7 +195,11 @@ export type ShopCustomerRecord = {
 // ---------- Customer endpoints ----------
 
 export const api = {
-  listShops: () => request<ShopSummary[]>("/shops"),
+  listShops: (latitude?: number, longitude?: number) => {
+    const params =
+      latitude != null && longitude != null ? `?latitude=${latitude}&longitude=${longitude}` : "";
+    return request<ShopSummary[]>(`/shops${params}`);
+  },
   getShop: (slug: string) => request<ShopDetail>(`/shops/${slug}`),
   joinStart: (shopSlug: string, firstName: string, mobileNumber: string) =>
     request<JoinStartResult>("/queue/join/start", {

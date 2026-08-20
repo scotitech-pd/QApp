@@ -1,10 +1,12 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
+import * as Location from "expo-location";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Modal, Text, View } from "react-native";
+import { Modal, Pressable, Text, View } from "react-native";
 
 import { api, type ShopSummary } from "../api";
-import { colors, fonts, space } from "../theme";
+import { colors, fonts, radius, space } from "../theme";
 import { Blueprint, Button, Loading, Note, Screen, Tag } from "../ui";
+import { SalonPathView } from "./SalonPathView";
 
 function waitLabel(shop: ShopSummary) {
   if (shop.queuePaused) return "Paused";
@@ -92,15 +94,40 @@ export function NearbyScreen({ onOpenShop }: { onOpenShop: (slug: string) => voi
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  const [view, setView] = useState<"path" | "list">("path");
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const coordsRef = useRef<{ latitude: number; longitude: number } | null>(null);
 
   const load = useCallback(async () => {
     try {
       setError(null);
-      setShops(await api.listShops());
+      const position = coordsRef.current;
+      setShops(await api.listShops(position?.latitude, position?.longitude));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load salons.");
     }
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (!permission.granted) return;
+        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        if (!active) return;
+        const next = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+        coordsRef.current = next;
+        setCoords(next);
+        void load();
+      } catch {
+        // No location — wait-based routing still works.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [load]);
 
   useEffect(() => {
     void load();
@@ -130,7 +157,46 @@ export function NearbyScreen({ onOpenShop }: { onOpenShop: (slug: string) => voi
       <ScanModal onClose={() => setScanOpen(false)} onShop={onOpenShop} visible={scanOpen} />
       {error ? <Note tone="danger">{error}</Note> : null}
       {!shops && !error ? <Loading /> : null}
-      {shops?.map((shop) => (
+      {shops && shops.length > 0 ? (
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: space(2), marginBottom: space(3) }}>
+          {(
+            [
+              { key: "path" as const, label: "Route" },
+              { key: "list" as const, label: "List" }
+            ]
+          ).map((item) => {
+            const active = view === item.key;
+            return (
+              <Pressable
+                key={item.key}
+                onPress={() => setView(item.key)}
+                style={{
+                  paddingHorizontal: space(4),
+                  paddingVertical: space(1.5),
+                  borderRadius: radius.full,
+                  backgroundColor: active ? colors.text : "transparent"
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontFamily: fonts.bodyMedium,
+                    letterSpacing: 0.6,
+                    textTransform: "uppercase",
+                    color: active ? colors.bg : colors.neutral600
+                  }}
+                >
+                  {item.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+      {shops && shops.length > 0 && view === "path" ? (
+        <SalonPathView hasLocation={coords != null} onOpenShop={onOpenShop} shops={shops} />
+      ) : null}
+      {view === "list" && shops?.map((shop) => (
         <Blueprint key={shop.slug} onPress={() => onOpenShop(shop.slug)}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: space(2) }}>
             <Text style={{ fontSize: 19, fontFamily: fonts.heading, color: colors.text, flexShrink: 1 }}>
@@ -151,7 +217,7 @@ export function NearbyScreen({ onOpenShop }: { onOpenShop: (slug: string) => voi
         </Blueprint>
       ))}
       {shops && shops.length === 0 ? <Note center>No salons are live yet. Pull down to refresh.</Note> : null}
-      {shops && shops.length > 0 ? (
+      {shops && shops.length > 0 && view === "list" ? (
         <Note center tone="faint">
           No account needed. Tap a salon to join its queue.
         </Note>
