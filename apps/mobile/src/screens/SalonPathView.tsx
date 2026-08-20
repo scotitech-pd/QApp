@@ -1,14 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Animated,
-  Dimensions,
   LayoutAnimation,
   Linking,
-  Modal,
-  PanResponder,
   Platform,
   Pressable,
-  ScrollView,
   Share,
   Text,
   UIManager,
@@ -116,9 +112,10 @@ function hoursLines(openingHours: ShopDetail["openingHours"]): string[] {
   );
 }
 
-/* Two-detent sheet: opens at half height, drags up to 75% of the screen.
- * The grabber + header + tiles are the drag zone; everything below lives
- * in a ScrollView that only scrolls once the sheet is expanded. */
+/* Native two-detent sheet on @gorhom/bottom-sheet: opens at the limited
+ * half view; swiping up anywhere expands to 85% and the same gesture hands
+ * off into content scrolling; pulling down from scroll-top collapses, then
+ * dismisses. */
 function DetailSheet({
   shop,
   onClose,
@@ -128,64 +125,27 @@ function DetailSheet({
   onClose: () => void;
   onJoin: (slug: string) => void;
 }) {
-  const screenH = Dimensions.get("window").height;
-  const SHEET_H = screenH * 0.75;
-  const HALF_OFFSET = screenH * 0.27;
-
-  const translateY = useRef(new Animated.Value(SHEET_H)).current;
-  const backdrop = useRef(new Animated.Value(0)).current;
-  const detentRef = useRef<number>(HALF_OFFSET);
-  const [expanded, setExpanded] = useState(false);
+  const sheetRef = useRef<BottomSheetModal>(null);
   const [detail, setDetail] = useState<ShopDetail | null>(null);
+  const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(backdrop, { toValue: 1, duration: 200, useNativeDriver: true }),
-      Animated.spring(translateY, { toValue: HALF_OFFSET, useNativeDriver: true, damping: 24, stiffness: 300, mass: 0.9 })
-    ]).start();
+    sheetRef.current?.present();
     api.getShop(shop.slug).then(setDetail).catch(() => undefined);
-  }, [backdrop, translateY, HALF_OFFSET, shop.slug]);
+  }, [shop.slug]);
 
-  function snapTo(offset: number) {
-    detentRef.current = offset;
-    setExpanded(offset === 0);
-    Animated.spring(translateY, { toValue: offset, useNativeDriver: true, damping: 24, stiffness: 300 }).start();
-  }
-
-  function close(after?: () => void) {
-    Animated.parallel([
-      Animated.timing(backdrop, { toValue: 0, duration: 170, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: SHEET_H, duration: 210, useNativeDriver: true })
-    ]).start(() => {
-      onClose();
-      after?.();
-    });
-  }
-
-  const pan = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_evt, gesture) => Math.abs(gesture.dy) > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
-      onPanResponderMove: (_evt, gesture) => {
-        const next = Math.min(SHEET_H, Math.max(0, detentRef.current + gesture.dy));
-        translateY.setValue(next);
-      },
-      onPanResponderRelease: (_evt, gesture) => {
-        const position = detentRef.current + gesture.dy;
-        if (gesture.vy > 0.9 || position > HALF_OFFSET + 130) {
-          close();
-        } else if (gesture.vy < -0.4 || position < HALF_OFFSET / 2) {
-          snapTo(0);
-        } else {
-          snapTo(HALF_OFFSET);
-        }
-      }
-    })
-  ).current;
+  const renderBackdrop = useCallback(
+    (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
+      <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} pressBehavior="close" />
+    ),
+    []
+  );
 
   const rating = shop.reviewSummary?.averageRating ?? detail?.reviewSummary?.averageRating ?? null;
   const ratingCount = shop.reviewSummary?.ratingCount ?? detail?.reviewSummary?.ratingCount ?? 0;
   const reviews = detail?.reviews ?? [];
   const hours = hoursLines(detail?.openingHours ?? null);
+  const expanded = index >= 1;
 
   function openDirections() {
     if (shop.latitude == null || shop.longitude == null) return;
@@ -211,195 +171,187 @@ function DetailSheet({
   }
 
   return (
-    <Modal animationType="none" onRequestClose={() => close()} transparent visible>
-      <Animated.View style={{ flex: 1, backgroundColor: "rgba(16,24,40,0.5)", opacity: backdrop }}>
-        <Pressable onPress={() => close()} style={{ flex: 1 }} />
-      </Animated.View>
-      <Animated.View
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: SHEET_H,
-          transform: [{ translateY }],
-          backgroundColor: colors.surface,
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          ...shadowFloat
-        }}
+    <BottomSheetModal
+      backdropComponent={renderBackdrop}
+      backgroundStyle={{ backgroundColor: colors.surface, borderRadius: 24 }}
+      enablePanDownToClose
+      handleIndicatorStyle={{ backgroundColor: colors.dividerSoft, width: 38, height: 5 }}
+      index={0}
+      onChange={setIndex}
+      onDismiss={onClose}
+      ref={sheetRef}
+      snapPoints={["34%", "85%"]}
+    >
+      <BottomSheetScrollView
+        contentContainerStyle={{ paddingHorizontal: space(5), paddingBottom: space(12) }}
+        showsVerticalScrollIndicator={expanded}
       >
-        {/* Drag zone */}
-        <View {...pan.panHandlers} style={{ paddingHorizontal: space(5), paddingTop: space(2) }}>
-          <View style={{ alignSelf: "center", width: 38, height: 5, borderRadius: 3, backgroundColor: colors.dividerSoft, marginBottom: space(3) }} />
-          <View style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
-            <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: colors.accent100, alignItems: "center", justifyContent: "center" }}>
-              <Storefront size={28} tint={colors.accent700} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text numberOfLines={1} style={{ fontFamily: fonts.heading, fontSize: 22, color: colors.text }}>
-                {shop.name}
-              </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                {rating != null && ratingCount > 0 ? (
-                  <>
-                    <SheetStars rating={rating} />
-                    <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.neutral600 }}>
-                      {rating.toFixed(1)} · {ratingCount} verified
-                    </Text>
-                  </>
-                ) : (
-                  <Text style={{ fontFamily: fonts.body, fontSize: 12, color: colors.neutral500 }}>
-                    {shop.city ?? ""}
-                  </Text>
-                )}
-              </View>
-            </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
+          <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: colors.accent100, alignItems: "center", justifyContent: "center" }}>
+            <Storefront size={28} tint={colors.accent700} />
           </View>
-
-          <View style={{ flexDirection: "row", gap: space(2), marginTop: space(3) }}>
-            {[
-              { label: "Waiting", value: String(shop.queueLength ?? 0) },
-              {
-                label: "Est. wait",
-                value: shop.queuePaused ? "Paused" : (shop.queueLength ?? 0) === 0 ? "None" : `~${shop.estimatedWaitMin ?? "?"} min`
-              },
-              { label: "Distance", value: shortDistance(shop) }
-            ].map((stat) => (
-              <View key={stat.label} style={{ flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, paddingVertical: space(2.5), alignItems: "center" }}>
-                <Text style={{ fontSize: 10, letterSpacing: 0.8, textTransform: "uppercase", color: colors.neutral600, fontFamily: fonts.bodyMedium }}>
-                  {stat.label}
-                </Text>
-                <Text style={{ fontSize: 20, fontFamily: fonts.heading, color: colors.text, marginTop: 2 }}>{stat.value}</Text>
-              </View>
-            ))}
+          <View style={{ flex: 1 }}>
+            <Text numberOfLines={1} style={{ fontFamily: fonts.heading, fontSize: 22, color: colors.text }}>
+              {shop.name}
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              {rating != null && ratingCount > 0 ? (
+                <>
+                  <SheetStars rating={rating} />
+                  <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.neutral600 }}>
+                    {rating.toFixed(1)} · {ratingCount} verified
+                  </Text>
+                </>
+              ) : (
+                <Text style={{ fontFamily: fonts.body, fontSize: 12, color: colors.neutral500 }}>{shop.city ?? ""}</Text>
+              )}
+            </View>
           </View>
         </View>
 
-        {/* Scrolling content */}
-        <ScrollView
-          contentContainerStyle={{ paddingHorizontal: space(5), paddingTop: space(3), paddingBottom: space(12) }}
-          scrollEnabled={expanded}
-          showsVerticalScrollIndicator={expanded}
-          style={{ flex: 1 }}
+        <View style={{ flexDirection: "row", gap: space(2), marginTop: space(3) }}>
+          {[
+            { label: "Waiting", value: String(shop.queueLength ?? 0) },
+            {
+              label: "Est. wait",
+              value: shop.queuePaused ? "Paused" : (shop.queueLength ?? 0) === 0 ? "None" : `~${shop.estimatedWaitMin ?? "?"} min`
+            },
+            { label: "Distance", value: shortDistance(shop) }
+          ].map((stat) => (
+            <View key={stat.label} style={{ flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, paddingVertical: space(2.5), alignItems: "center" }}>
+              <Text style={{ fontSize: 10, letterSpacing: 0.8, textTransform: "uppercase", color: colors.neutral600, fontFamily: fonts.bodyMedium }}>
+                {stat.label}
+              </Text>
+              <Text style={{ fontSize: 20, fontFamily: fonts.heading, color: colors.text, marginTop: 2 }}>{stat.value}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Pressable
+          disabled={shop.queuePaused}
+          onPress={() => {
+            sheetRef.current?.dismiss();
+            onJoin(shop.slug);
+          }}
+          style={({ pressed }) => [
+            {
+              minHeight: 50,
+              borderRadius: radius.md,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: colors.accent,
+              marginTop: space(3),
+              opacity: shop.queuePaused ? 0.45 : 1,
+              ...shadowSoft
+            },
+            pressed && { transform: [{ scale: 0.98 }] }
+          ]}
         >
-          <Pressable
-            disabled={shop.queuePaused}
-            onPress={() => close(() => onJoin(shop.slug))}
-            style={({ pressed }) => [
-              {
-                minHeight: 50,
-                borderRadius: radius.md,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: colors.accent,
-                opacity: shop.queuePaused ? 0.45 : 1,
-                ...shadowSoft
-              },
-              pressed && { transform: [{ scale: 0.98 }] }
-            ]}
-          >
-            <Text style={{ color: "#FFFFFF", fontSize: 16, fontFamily: fonts.heading, letterSpacing: 0.4 }}>
-              {shop.queuePaused ? "Queue is paused" : "Join the queue"}
+          <Text style={{ color: "#FFFFFF", fontSize: 16, fontFamily: fonts.heading, letterSpacing: 0.4 }}>
+            {shop.queuePaused ? "Queue is paused" : "Join the queue"}
+          </Text>
+        </Pressable>
+
+        {!expanded ? (
+          <Pressable onPress={() => sheetRef.current?.snapToIndex(1)} style={{ paddingVertical: space(2), marginTop: space(1) }}>
+            <Text style={{ textAlign: "center", fontSize: 14, color: colors.accent700, fontFamily: fonts.bodyMedium }}>
+              View details, ratings & reviews ↑
             </Text>
           </Pressable>
-          {!expanded ? (
-            <Pressable onPress={() => snapTo(0)} style={{ paddingVertical: space(2), marginTop: space(1) }}>
-              <Text style={{ textAlign: "center", fontSize: 14, color: colors.accent700, fontFamily: fonts.bodyMedium }}>
-                View details, ratings & reviews ↑
-              </Text>
+        ) : (
+          <View style={{ height: space(4) }} />
+        )}
+
+        {expanded ? (
+          <>
+        <View style={{ flexDirection: "row", gap: space(2), marginTop: space(2) }}>
+          {[
+            { label: "Directions", action: openDirections, enabled: shop.latitude != null },
+            { label: "Call", action: callShop, enabled: Boolean(detail?.phone) },
+            { label: "Share", action: shareShop, enabled: true }
+          ].map((item) => (
+            <Pressable
+              disabled={!item.enabled}
+              key={item.label}
+              onPress={item.action}
+              style={({ pressed }) => [
+                {
+                  flex: 1,
+                  minHeight: 42,
+                  borderRadius: radius.md,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: colors.surfaceAlt,
+                  opacity: item.enabled ? 1 : 0.4
+                },
+                pressed && { transform: [{ scale: 0.96 }] }
+              ]}
+            >
+              <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.accent700 }}>{item.label}</Text>
             </Pressable>
-          ) : null}
+          ))}
+        </View>
 
-          <View style={{ flexDirection: "row", gap: space(2), marginTop: space(3) }}>
-            {[
-              { label: "Directions", action: openDirections, enabled: shop.latitude != null },
-              { label: "Call", action: callShop, enabled: Boolean(detail?.phone) },
-              { label: "Share", action: shareShop, enabled: true }
-            ].map((item) => (
-              <Pressable
-                disabled={!item.enabled}
-                key={item.label}
-                onPress={item.action}
-                style={({ pressed }) => [
-                  {
-                    flex: 1,
-                    minHeight: 42,
-                    borderRadius: radius.md,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: colors.surfaceAlt,
-                    opacity: item.enabled ? 1 : 0.4
-                  },
-                  pressed && { transform: [{ scale: 0.96 }] }
-                ]}
-              >
-                <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.accent700 }}>{item.label}</Text>
-              </Pressable>
-            ))}
+        {detail?.publicDescription || hours.length > 0 ? (
+          <View style={{ marginTop: space(4) }}>
+            <Text style={{ fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: colors.neutral600, fontFamily: fonts.bodyMedium, marginBottom: space(2) }}>
+              About
+            </Text>
+            {detail?.publicDescription ? (
+              <Text style={{ fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.ink2 }}>{detail.publicDescription}</Text>
+            ) : null}
+            {hours.length > 0 ? (
+              <View style={{ marginTop: space(2) }}>
+                <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.neutral700, marginBottom: 2 }}>Opening hours</Text>
+                {hours.map((line) => (
+                  <Text key={line} style={{ fontFamily: fonts.body, fontSize: 13, lineHeight: 20, color: colors.neutral600 }}>
+                    {line}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
           </View>
+        ) : null}
 
-          {detail?.publicDescription || hours.length > 0 ? (
-            <View style={{ marginTop: space(4) }}>
-              <Text style={{ fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: colors.neutral600, fontFamily: fonts.bodyMedium, marginBottom: space(2) }}>
-                About
-              </Text>
-              {detail?.publicDescription ? (
-                <Text style={{ fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.ink2 }}>
-                  {detail.publicDescription}
-                </Text>
-              ) : null}
-              {hours.length > 0 ? (
-                <View style={{ marginTop: space(2) }}>
-                  <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.neutral700, marginBottom: 2 }}>Opening hours</Text>
-                  {hours.map((line) => (
-                    <Text key={line} style={{ fontFamily: fonts.body, fontSize: 13, lineHeight: 20, color: colors.neutral600 }}>
-                      {line}
-                    </Text>
-                  ))}
+        <View style={{ marginTop: space(4), flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginBottom: space(2) }}>
+          <Text style={{ fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: colors.neutral600, fontFamily: fonts.bodyMedium }}>
+            Reviews
+          </Text>
+          <Text style={{ fontSize: 11, color: colors.success, fontFamily: fonts.bodyMedium }}>✓ Verified visits only</Text>
+        </View>
+        {reviews.length === 0 ? (
+          <Text style={{ fontFamily: fonts.body, fontSize: 13, lineHeight: 19, color: colors.neutral500, textAlign: "center", paddingVertical: space(3) }}>
+            No written reviews yet — ratings come only from completed visits.
+          </Text>
+        ) : (
+          reviews.slice(0, 8).map((review, reviewIndex) => {
+            const name = review.customerName ?? review.customerFirstName ?? review.customer?.firstName ?? "Customer";
+            const when = relativeDay(review.createdAt);
+            return (
+              <View key={review.id ?? reviewIndex} style={{ backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: space(3), marginBottom: space(2) }}>
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                  <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.text }}>{name}</Text>
+                  <SheetStars rating={review.rating} size={12} />
                 </View>
-              ) : null}
-            </View>
-          ) : null}
-
-          <View style={{ marginTop: space(4), flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginBottom: space(2) }}>
-            <Text style={{ fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: colors.neutral600, fontFamily: fonts.bodyMedium }}>
-              Reviews
-            </Text>
-            <Text style={{ fontSize: 11, color: colors.success, fontFamily: fonts.bodyMedium }}>✓ Verified visits only</Text>
-          </View>
-          {reviews.length === 0 ? (
-            <Text style={{ fontFamily: fonts.body, fontSize: 13, lineHeight: 19, color: colors.neutral500, textAlign: "center", paddingVertical: space(3) }}>
-              No written reviews yet — ratings come only from completed visits.
-            </Text>
-          ) : (
-            reviews.slice(0, 8).map((review, index) => {
-              const name = review.customerName ?? review.customerFirstName ?? review.customer?.firstName ?? "Customer";
-              const when = relativeDay(review.createdAt);
-              return (
-                <View key={review.id ?? index} style={{ backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: space(3), marginBottom: space(2) }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                    <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.text }}>{name}</Text>
-                    <SheetStars rating={review.rating} size={12} />
-                  </View>
-                  {review.comment ? (
-                    <Text style={{ fontFamily: fonts.body, fontSize: 13.5, lineHeight: 20, color: colors.ink2, marginTop: 4 }}>
-                      {review.comment}
-                    </Text>
-                  ) : null}
-                  {when ? <Text style={{ fontFamily: fonts.body, fontSize: 11, color: colors.neutral500, marginTop: 4 }}>{when}</Text> : null}
-                </View>
-              );
-            })
-          )}
-          {reviews.length > 0 ? (
-            <Text style={{ fontFamily: fonts.body, fontSize: 12, color: colors.neutral500, textAlign: "center", marginTop: space(1) }}>
-              Every rating comes from a real completed visit — no anonymous reviews.
-            </Text>
-          ) : null}
-        </ScrollView>
-      </Animated.View>
-    </Modal>
+                {review.comment ? (
+                  <Text style={{ fontFamily: fonts.body, fontSize: 13.5, lineHeight: 20, color: colors.ink2, marginTop: 4 }}>
+                    {review.comment}
+                  </Text>
+                ) : null}
+                {when ? <Text style={{ fontFamily: fonts.body, fontSize: 11, color: colors.neutral500, marginTop: 4 }}>{when}</Text> : null}
+              </View>
+            );
+          })
+        )}
+        {reviews.length > 0 ? (
+          <Text style={{ fontFamily: fonts.body, fontSize: 12, color: colors.neutral500, textAlign: "center", marginTop: space(1) }}>
+            Every rating comes from a real completed visit — no anonymous reviews.
+          </Text>
+        ) : null}
+          </>
+        ) : null}
+      </BottomSheetScrollView>
+    </BottomSheetModal>
   );
 }
 

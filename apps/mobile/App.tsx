@@ -1,9 +1,12 @@
+import "react-native-gesture-handler";
 import { Barlow_400Regular, Barlow_500Medium, Barlow_700Bold } from "@expo-google-fonts/barlow";
 import { BarlowCondensed_400Regular, BarlowCondensed_600SemiBold } from "@expo-google-fonts/barlow-condensed";
 import { useFonts } from "expo-font";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { NearbyScreen } from "./src/screens/NearbyScreen";
 import { QueueScreen } from "./src/screens/QueueScreen";
@@ -108,10 +111,14 @@ export default function App() {
   }
 
   return (
-    <StoreProvider>
-      <StatusBar style="dark" />
-      <Shell />
-    </StoreProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <BottomSheetModalProvider>
+        <StoreProvider>
+          <StatusBar style="dark" />
+          <Shell />
+        </StoreProvider>
+      </BottomSheetModalProvider>
+    </GestureHandlerRootView>
   );
 }
 
