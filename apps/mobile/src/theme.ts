@@ -1,8 +1,9 @@
-// OnQ design tokens — from the "Salon queue management app" Claude Design
-// project (blueprint aesthetic: square corners, hairline borders, corner ticks).
+// OnQ design tokens — evolved from the Claude Design blueprint palette into
+// a shipped-product look: white elevated cards, rounded corners, soft depth.
 export const colors = {
-  bg: "#F2F2F3",
-  surface: "#E9E9EA",
+  bg: "#F3F4F6",
+  surface: "#FFFFFF",
+  surfaceAlt: "#EEF0F3",
   text: "#1D1F20",
   divider: "rgba(29, 31, 32, 0.16)",
   dividerSoft: "rgba(29, 31, 32, 0.08)",
@@ -38,15 +39,30 @@ export const fonts = {
   bodyBold: "Barlow_700Bold"
 };
 
-// Blueprint frame: square corners everywhere.
-export const radius = { none: 0, sm: 2, md: 4, lg: 7, full: 999 };
+export const radius = { none: 0, sm: 8, md: 12, lg: 16, xl: 22, full: 999 };
 
 export const space = (n: number) => n * 4;
 
 export const shadowCard = {
-  shadowColor: "#2B2B2D",
-  shadowOpacity: 0.08,
-  shadowRadius: 8,
+  shadowColor: "#101828",
+  shadowOpacity: 0.06,
+  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 3
+};
+
+export const shadowSoft = {
+  shadowColor: "#101828",
+  shadowOpacity: 0.04,
+  shadowRadius: 6,
   shadowOffset: { width: 0, height: 2 },
   elevation: 2
+};
+
+export const shadowFloat = {
+  shadowColor: "#101828",
+  shadowOpacity: 0.12,
+  shadowRadius: 18,
+  shadowOffset: { width: 0, height: 8 },
+  elevation: 6
 };

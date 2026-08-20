@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
-import { api, type OpsDashboard, type ShopCustomerRecord, type ShopInsights } from "../api";
+import { api, ApiRequestError, type OpsDashboard, type ShopCustomerRecord, type ShopInsights } from "../api";
 import { useStore } from "../store";
-import { colors, fonts, space } from "../theme";
+import { colors, fonts, radius, shadowSoft, space } from "../theme";
 import { Blueprint, Button, Field, Kicker, Loading, Note, Screen, Tag } from "../ui";
 
 type OwnerTab = "queue" | "customers" | "earnings";
@@ -57,8 +57,16 @@ function SegTabs({ tab, onChange }: { tab: OwnerTab; onChange: (next: OwnerTab) 
     { key: "earnings", label: "Earnings" }
   ];
   return (
-    <View style={{ flexDirection: "row", borderWidth: 1, borderColor: colors.divider, marginBottom: space(4) }}>
-      {items.map((item, index) => {
+    <View
+      style={{
+        flexDirection: "row",
+        backgroundColor: colors.surfaceAlt,
+        borderRadius: radius.full,
+        padding: 3,
+        marginBottom: space(4)
+      }}
+    >
+      {items.map((item) => {
         const active = tab === item.key;
         return (
           <Pressable
@@ -68,9 +76,9 @@ function SegTabs({ tab, onChange }: { tab: OwnerTab; onChange: (next: OwnerTab) 
               flex: 1,
               paddingVertical: space(2),
               alignItems: "center",
-              backgroundColor: active ? colors.accent : "transparent",
-              borderLeftWidth: index === 0 ? 0 : 1,
-              borderLeftColor: colors.divider
+              borderRadius: radius.full,
+              backgroundColor: active ? colors.surface : "transparent",
+              ...(active ? shadowSoft : null)
             }}
           >
             <Text
@@ -79,7 +87,7 @@ function SegTabs({ tab, onChange }: { tab: OwnerTab; onChange: (next: OwnerTab) 
                 letterSpacing: 1,
                 textTransform: "uppercase",
                 fontFamily: fonts.heading,
-                color: active ? colors.bg : colors.neutral600
+                color: active ? colors.accent700 : colors.neutral600
               }}
             >
               {item.label}
@@ -124,6 +132,12 @@ export function ShopPortalScreen() {
       if (shopInsights) setInsights(shopInsights);
       if (shopCustomers) setCustomers(shopCustomers);
     } catch (err) {
+      if (err instanceof ApiRequestError && err.status === 401) {
+        // Session expired — back to sign-in instead of a dead error screen.
+        setDash(null);
+        setSession(null, null);
+        return;
+      }
       setError(err instanceof Error ? err.message : "Could not load the queue.");
     }
   }, [accessToken, slug]);
@@ -417,7 +431,7 @@ export function ShopPortalScreen() {
             </Note>
           ) : null}
           {customers && customers.length > 0 ? (
-            <View style={{ borderWidth: 1, borderColor: colors.divider }}>
+            <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, overflow: "hidden", ...shadowSoft }}>
               <View style={{ flexDirection: "row", paddingHorizontal: space(3), paddingVertical: space(2), borderBottomWidth: 1, borderBottomColor: colors.divider }}>
                 <Text style={[thStyle, { flex: 1 }]}>Customer</Text>
                 <Text style={[thStyle, { width: 50 }]}>Visits</Text>
@@ -474,10 +488,10 @@ export function ShopPortalScreen() {
                   <View
                     style={{
                       width: "100%",
-                      height: Math.max(2, Math.round(pct * 64)),
+                      height: Math.max(3, Math.round(pct * 64)),
                       backgroundColor: peak ? colors.accent : colors.accent200,
-                      borderWidth: 1,
-                      borderColor: colors.divider
+                      borderTopLeftRadius: 4,
+                      borderTopRightRadius: 4
                     }}
                   />
                   <Text style={{ fontSize: 8.5, color: colors.neutral500, fontFamily: fonts.body }}>{hourLabel(entry.hour)}</Text>

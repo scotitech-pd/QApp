@@ -10,7 +10,7 @@ import { QueueScreen } from "./src/screens/QueueScreen";
 import { ShopDetailScreen } from "./src/screens/ShopDetailScreen";
 import { ShopPortalScreen } from "./src/screens/ShopPortalScreen";
 import { StoreProvider, useStore } from "./src/store";
-import { colors, fonts, space } from "./src/theme";
+import { colors, fonts, shadowFloat, space } from "./src/theme";
 
 type Tab = "salons" | "queue" | "shop";
 
@@ -107,7 +107,7 @@ export default function App() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   body: { flex: 1 },
-  tabBarSafe: { backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.divider },
+  tabBarSafe: { backgroundColor: colors.surface, ...shadowFloat },
   tabBar: { flexDirection: "row", paddingTop: space(2), paddingBottom: space(1) },
-  tabItem: { flex: 1, alignItems: "center", gap: 2 }
+  tabItem: { flex: 1, alignItems: "center", gap: 2, paddingVertical: 2 }
 });
