@@ -684,6 +684,7 @@ model QueueEntry {
   insertedByUserId         String?
   createdAt                DateTime              @default(now())
   updatedAt                DateTime              @updatedAt
+  pushToken                String?
   trackingToken            String                @unique
   sortIndex                Int
   joinedAt                 DateTime              @default(now())

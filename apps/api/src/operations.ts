@@ -8,6 +8,7 @@ import {
 
 import { ApiError } from "./core/api-error";
 import { prisma } from "./prisma";
+import { sendQueuePush } from "./push";
 import { emitQueueStatusUpdated, emitShopQueueUpdated } from "./realtime";
 import { loadRecentReviews, loadReviewSummary } from "./reviews";
 import {
@@ -494,6 +495,13 @@ export async function callNextCustomer(slug: string, trackingToken: string) {
   });
 
   await emitLocationQueueRefresh(location, [queueEntry.trackingToken]);
+
+  await sendQueuePush(
+    result.pushToken,
+    "It's your turn!",
+    `${location.name} is ready for you — head in.`,
+    { trackingToken: queueEntry.trackingToken, kind: "called" }
+  );
 
   return serializeQueueEntry(result);
 }

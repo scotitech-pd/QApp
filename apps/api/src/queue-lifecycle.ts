@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 
 import { prisma } from "./prisma";
+import { sendQueuePush } from "./push";
 import { emitQueueStatusUpdated, emitShopQueueUpdated } from "./realtime";
 import { sendQueueAlertSms } from "./sms";
 
@@ -144,6 +145,7 @@ export async function processQueueLifecycle(businessLocationId: string) {
     notificationId: string;
     to: string;
     message: string;
+    push?: { token: string; title: string; body: string; data?: Record<string, unknown> };
   }> = [];
 
   await prisma.$transaction(async (tx) => {
@@ -226,7 +228,15 @@ export async function processQueueLifecycle(businessLocationId: string) {
           to: entry.visit.customer.phone,
           message: `We released your place at ${location.name} because we did not hear back. Rejoin here: ${buildShopLink(
             location.slug
-          )}`
+          )}`,
+          push: entry.pushToken
+            ? {
+                token: entry.pushToken,
+                title: "You missed your turn",
+                body: `Your place at ${location.name} was released. Rejoin any time.`,
+                data: { trackingToken: entry.trackingToken, kind: "missed" }
+              }
+            : undefined
         });
       }
 
@@ -331,7 +341,15 @@ export async function processQueueLifecycle(businessLocationId: string) {
           to: entry.visit.customer.phone,
           message: `You are getting close at ${location.name}. About ${eta} min left. Track your queue here: ${buildQueueLink(
             entry.trackingToken
-          )}`
+          )}`,
+          push: entry.pushToken
+            ? {
+                token: entry.pushToken,
+                title: `Almost your turn at ${location.name}`,
+                body: `You're #${index + 1} — about ${eta} min. Start heading over.`,
+                data: { trackingToken: entry.trackingToken, kind: "near-turn" }
+              }
+            : undefined
         });
       }
     }
@@ -453,7 +471,15 @@ export async function processQueueLifecycle(businessLocationId: string) {
           to: frontEntry.visit.customer.phone,
           message: `It is nearly your turn at ${location.name}. Tell us if you are coming: ${buildQueueLink(
             frontEntry.trackingToken
-          )}`
+          )}`,
+          push: frontEntry.pushToken
+            ? {
+                token: frontEntry.pushToken,
+                title: "Are you coming?",
+                body: `${location.name} is nearly ready for you. Confirm within ${location.calledGracePeriodMin} min.`,
+                data: { trackingToken: frontEntry.trackingToken, kind: "arrival-confirmation" }
+              }
+            : undefined
         });
       }
 
@@ -466,6 +492,9 @@ export async function processQueueLifecycle(businessLocationId: string) {
     notificationsToSend.map(async (notification) => {
       const result = await sendQueueAlertSms(notification.to, notification.message);
       await markNotificationDelivery(notification.notificationId, result);
+      if (notification.push) {
+        await sendQueuePush(notification.push.token, notification.push.title, notification.push.body, notification.push.data);
+      }
     })
   );
 

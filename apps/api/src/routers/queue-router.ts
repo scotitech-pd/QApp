@@ -1,5 +1,8 @@
 import { Router } from "express";
 
+import { isExpoPushToken } from "../push";
+import { prisma } from "../prisma";
+
 import { ApiError } from "../core/api-error";
 import { asyncHandler, getPathParam, sendItem } from "../core/http";
 import {
@@ -70,6 +73,29 @@ export function createQueueRouter() {
 
       const item = await respondToArrivalConfirmation(getPathParam(req.params.trackingToken), parsed.data.response);
       sendItem(res, item);
+    })
+  );
+
+  router.post(
+    "/queue/status/:trackingToken/push-token",
+    asyncHandler(async (req, res) => {
+      const token = (req.body as Record<string, unknown> | undefined)?.token;
+
+      if (!isExpoPushToken(token)) {
+        throw ApiError.badRequest("A valid Expo push token is required.");
+      }
+
+      const entry = await prisma.queueEntry.findUnique({
+        where: { trackingToken: getPathParam(req.params.trackingToken) },
+        select: { id: true }
+      });
+
+      if (!entry) {
+        throw ApiError.notFound("Queue status not found.");
+      }
+
+      await prisma.queueEntry.update({ where: { id: entry.id }, data: { pushToken: token } });
+      sendItem(res, { registered: true });
     })
   );
 

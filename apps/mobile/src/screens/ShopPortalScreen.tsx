@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Linking, Pressable, Text, View } from "react-native";
 
 import { api, ApiRequestError, type OpsDashboard, type ShopCustomerRecord, type ShopInsights } from "../api";
+import { WEB_BASE_URL } from "../config";
 import { useStore } from "../store";
 import { colors, fonts, radius, shadowSoft, space } from "../theme";
 import { Blueprint, Button, Field, Kicker, Loading, Note, Screen, Tag } from "../ui";
@@ -340,17 +341,20 @@ export function ShopPortalScreen() {
 
           {inService.map((visit) => {
             const started = minsAgo(visit.startedAt);
+            const slot = visit.plannedDurationMin ?? dash.shop.defaultWalkInDurationMin;
+            const overdue = started != null && slot > 0 && started > slot * 2;
             return (
-              <Blueprint key={visit.id} style={{ backgroundColor: colors.accent100 }}>
+              <Blueprint key={visit.id} style={{ backgroundColor: overdue ? "#FCEFDC" : colors.accent100 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: space(2.5) }}>
-                  <Tag label="In chair" pulse tone="accent" />
+                  <Tag label={overdue ? "Still going?" : "In chair"} pulse tone={overdue ? "neutral" : "accent"} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontFamily: fonts.heading, fontSize: 16, color: colors.text }}>
                       {visit.customer.firstName}
                     </Text>
-                    <Text style={{ fontSize: 12, color: colors.neutral600, fontFamily: fonts.body }}>
+                    <Text style={{ fontSize: 12, color: overdue ? "#A76607" : colors.neutral600, fontFamily: fonts.body }}>
                       {started != null ? `started ${started} min ago` : "in progress"}
                       {visit.plannedDurationMin ? ` · ${visit.plannedDurationMin} min slot` : ""}
+                      {overdue ? " · tap Done or +10 min" : ""}
                     </Text>
                   </View>
                   <Button kind="ghost" label="+10 min" onPress={() => void act(() => api.opsExtendService(accessToken, slug, visit.id))} small />
@@ -524,6 +528,13 @@ export function ShopPortalScreen() {
       ) : null}
 
       <View style={{ marginTop: space(6) }}>
+        <Button
+          kind="secondary"
+          label="Print QR counter sign"
+          onPress={() => void Linking.openURL(`${WEB_BASE_URL}/ops/shops/${slug}/qr`)}
+          small
+        />
+        <View style={{ height: space(2) }} />
         <Note center tone="faint">
           Signed in as {user?.firstName ?? "staff"}
         </Note>

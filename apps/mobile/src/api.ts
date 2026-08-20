@@ -215,6 +215,11 @@ export const api = {
       body: { challengeId, code }
     }),
   queueStatus: (trackingToken: string) => request<QueueStatus>(`/queue/status/${trackingToken}`),
+  registerPushToken: (trackingToken: string, token: string) =>
+    request<unknown>(`/queue/status/${trackingToken}/push-token`, {
+      method: "POST",
+      body: { token }
+    }),
   respondArrival: (trackingToken: string, response: "COMING" | "DECLINED") =>
     request<QueueStatus>(`/queue/status/${trackingToken}/respond-arrival`, {
       method: "POST",

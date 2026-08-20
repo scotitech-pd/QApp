@@ -21,6 +21,7 @@ Written 2026-08-20 · Supersedes conflicting details in execution-plan.md · Nam
 | 1. Live page | Pilot (LAN, HTTP) | Tracking page updates in ~2s via Socket.IO; when called it flips to a full-screen "It's your turn" state + chime + vibration (Vibration API) + flashing title. Page shows "Keep this page open" banner. | High if page open; zero if phone locked long |
 | 2. Human fallback | Pilot | Position + name on the owner's screen — barber calls out the name, exactly like today. OnQ's job is that the person is *back in the shop* by then thanks to the "Are you coming?" ping sent at position ≤2. | High — this is what shops already do |
 | 3. Web Push | Hosted (HTTPS) | Push permission prompt on the tracking page. Works on Android Chrome even with screen locked; iOS only for installed PWA (16.4+). | Med-high on Android |
+| 3b. **App push (BUILT)** | Native app | Expo push token registered per queue entry; API fires near-turn / are-you-coming / your-turn / missed automatically. Local banner+sound layer works everywhere incl. Expo Go; remote (closed-app) delivery activates in dev/TestFlight builds. Verified: lock-screen notification "It's your turn!" in simulator. | High |
 | 4. WhatsApp/SMS | Phase 2 (₹) | Template message "You're next at {shop}" via WhatsApp Business API / MSG91 (DLT — paperwork starts during pilot). | Highest, costs money |
 
 Honest statement: with a locked phone on rung 1, only rungs 3–4 reach the customer. The pilot design compensates by pinging early ("Are you coming?" at position 2, ~15 min out) while the customer is still actively glancing at the page, and by the human call-out. This mirrors reality: people waiting for a haircut check their phone every few minutes.
@@ -74,7 +75,7 @@ Status: ✅ done · 🔄 in progress · ⬜ todo · Owner: F = Founder, C = Clau
 | ID | Module | Item |
 |---|---|---|
 | S4.1 | Infra | Deploy API to founder's server (or Render), domain + HTTPS, repoint web/native/QRs |
-| S4.2 | Web | Web Push on tracking page (rung 3) |
+| S4.2 | Web | Web Push on tracking page (rung 3) — native app push (rung 3b) already shipped ✅ |
 | S4.3 | API | WhatsApp/SMS turn alerts (rung 4, D2 output) |
 | S4.4 | Owner | Queue reorder (drag or up/down) |
 | S4.5 | Mobile | Release APK + TestFlight via Scotitech account; Play internal ($25) |
