@@ -31,6 +31,7 @@ Expo is the recommended mobile path for Q-App because it keeps the team in the T
 
 ## Documentation Map
 
+- [Execution Plan](./docs/execution-plan.md) — **active operating doc**
 - [Product Roadmap](./docs/product-roadmap.md)
 - [Pilot Launch Spec](./docs/pilot-launch.md)
 - [Pilot Runbook](./docs/pilot-runbook.md)
