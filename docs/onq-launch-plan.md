@@ -80,6 +80,7 @@ Status: ✅ done · 🔄 in progress · ⬜ todo · Owner: F = Founder, C = Clau
 | S4.5 | Mobile | Release APK + TestFlight via Scotitech account; Play internal ($25) |
 | S4.6 | Growth | Onboard shops 2–10, walkable radius |
 | S4.7 | Native | Android App Links / iOS Universal Links on the domain, so the OS camera opens the installed app directly from the same QR (no scanner needed) |
+| S4.8 | Native+API | Optional customer accounts: Sign in with Google + Apple to see visit history, favourite salons, faster rejoin (profile prefill). Queue joining stays account-free. Note: App Store rule — offering Google sign-in REQUIRES offering Sign in with Apple too. API: OAuth token verification endpoints + link customer records by verified phone. |
 
 ## Stall guard spec (S2.3 output, build in Sprint 4)
 
