@@ -88,11 +88,13 @@ function Storefront({ size, tint }: { size: number; tint: string }) {
 function DetailSheet({
   shop,
   onClose,
-  onJoin
+  onJoin,
+  onInfo
 }: {
   shop: ShopSummary;
   onClose: () => void;
   onJoin: (slug: string) => void;
+  onInfo: (slug: string) => void;
 }) {
   const translateY = useRef(new Animated.Value(620)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
@@ -226,7 +228,10 @@ function DetailSheet({
               {shop.queuePaused ? "Queue is paused" : "Join the queue"}
             </Text>
           </Pressable>
-          <Pressable onPress={() => close()} style={{ alignItems: "center", paddingVertical: space(2) }}>
+          <Pressable onPress={() => close(() => onInfo(shop.slug))} style={{ alignItems: "center", paddingVertical: space(2) }}>
+            <Text style={{ color: colors.accent700, fontSize: 14, fontFamily: fonts.bodyMedium }}>View details, ratings & reviews</Text>
+          </Pressable>
+          <Pressable onPress={() => close()} style={{ alignItems: "center", paddingVertical: space(1) }}>
             <Text style={{ color: colors.neutral600, fontSize: 14, fontFamily: fonts.bodyMedium }}>Close</Text>
           </Pressable>
         </View>
@@ -238,11 +243,13 @@ function DetailSheet({
 export function SalonPathView({
   shops,
   hasLocation,
-  onOpenShop
+  onOpenShop,
+  onOpenInfo
 }: {
   shops: ShopSummary[];
   hasLocation: boolean;
   onOpenShop: (slug: string) => void;
+  onOpenInfo: (slug: string) => void;
 }) {
   const [sort, setSort] = useState<PathSort>("wait");
   const [width, setWidth] = useState(0);
@@ -464,6 +471,7 @@ export function SalonPathView({
       {selected ? (
         <DetailSheet
           onClose={() => setSelected(null)}
+          onInfo={(slug) => onOpenInfo(slug)}
           onJoin={(slug) => onOpenShop(slug)}
           shop={selected}
         />

@@ -129,7 +129,13 @@ function ScanModal({
   );
 }
 
-export function NearbyScreen({ onOpenShop }: { onOpenShop: (slug: string) => void }) {
+export function NearbyScreen({
+  onOpenShop,
+  onOpenInfo
+}: {
+  onOpenShop: (slug: string) => void;
+  onOpenInfo: (slug: string) => void;
+}) {
   const [shops, setShops] = useState<ShopSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -227,10 +233,10 @@ export function NearbyScreen({ onOpenShop }: { onOpenShop: (slug: string) => voi
         </View>
       ) : null}
       {shops && shops.length > 0 && view === "path" ? (
-        <SalonPathView hasLocation={coords != null} onOpenShop={onOpenShop} shops={shops} />
+        <SalonPathView hasLocation={coords != null} onOpenInfo={onOpenInfo} onOpenShop={onOpenShop} shops={shops} />
       ) : null}
       {view === "list" && shops?.map((shop) => (
-        <Blueprint key={shop.slug} onPress={() => onOpenShop(shop.slug)}>
+        <Blueprint key={shop.slug} onPress={() => onOpenInfo(shop.slug)}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: space(2) }}>
             <Text style={{ fontSize: 19, fontFamily: fonts.heading, color: colors.text, flexShrink: 1 }}>
               {shop.name}
@@ -252,7 +258,7 @@ export function NearbyScreen({ onOpenShop }: { onOpenShop: (slug: string) => voi
       {shops && shops.length === 0 ? <Note center>No salons are live yet. Pull down to refresh.</Note> : null}
       {shops && shops.length > 0 && view === "list" ? (
         <Note center tone="faint">
-          No account needed. Tap a salon to join its queue.
+          No account needed. Tap a salon for details and reviews.
         </Note>
       ) : null}
     </Screen>

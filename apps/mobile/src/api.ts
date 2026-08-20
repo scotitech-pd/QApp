@@ -64,10 +64,13 @@ export type ShopSummary = {
 export type ShopDetail = ShopSummary & {
   openingHours?: Record<string, string> | { note?: string } | null;
   serviceStationsCount?: number;
+  phone?: string | null;
   reviews?: Array<{
     id?: string;
     rating: number;
     comment: string | null;
+    createdAt?: string;
+    customerName?: string;
     customerFirstName?: string;
     customer?: { firstName?: string };
   }>;

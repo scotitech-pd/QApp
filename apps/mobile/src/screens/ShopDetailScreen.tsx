@@ -8,11 +8,13 @@ import { BackLink, Blueprint, Button, Field, Kicker, Loading, Note, Screen, Tag 
 export function ShopDetailScreen({
   slug,
   onBack,
-  onJoined
+  onJoined,
+  onInfo
 }: {
   slug: string;
   onBack: () => void;
   onJoined: (trackingToken: string) => void;
+  onInfo?: (slug: string) => void;
 }) {
   const [shop, setShop] = useState<ShopDetail | null>(null);
   const [error, setError] = useState<string | null>(null);

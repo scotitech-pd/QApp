@@ -64,6 +64,7 @@ export function serializeShopBase(
     latitude: number;
     longitude: number;
     publicDescription: string | null;
+    phone: string | null;
     logoImageUrl: string | null;
     coverImageUrl: string | null;
     serviceStationsCount: number;
@@ -97,6 +98,7 @@ export function serializeShopBase(
     latitude: location.latitude,
     longitude: location.longitude,
     publicDescription: location.publicDescription,
+    phone: location.phone,
     logoImageUrl: location.logoImageUrl,
     coverImageUrl: location.coverImageUrl,
     serviceStationsCount: location.serviceStationsCount,

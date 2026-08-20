@@ -8,6 +8,7 @@ import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { NearbyScreen } from "./src/screens/NearbyScreen";
 import { QueueScreen } from "./src/screens/QueueScreen";
 import { ShopDetailScreen } from "./src/screens/ShopDetailScreen";
+import { ShopInfoScreen } from "./src/screens/ShopInfoScreen";
 import { ShopPortalScreen } from "./src/screens/ShopPortalScreen";
 import { StoreProvider, useStore } from "./src/store";
 import { colors, fonts, shadowFloat, space } from "./src/theme";
@@ -23,7 +24,7 @@ const TABS: Array<{ key: Tab; label: string; glyph: string }> = [
 function Shell() {
   const { ready, setTrackingToken } = useStore();
   const [tab, setTab] = useState<Tab>("salons");
-  const [openShopSlug, setOpenShopSlug] = useState<string | null>(null);
+  const [shopNav, setShopNav] = useState<{ slug: string; mode: "join" | "info" } | null>(null);
 
   if (!ready) return <View style={styles.root} />;
 
@@ -31,18 +32,28 @@ function Shell() {
     <View style={styles.root}>
       <SafeAreaView style={styles.body}>
         {tab === "salons" ? (
-          openShopSlug ? (
+          shopNav?.mode === "join" ? (
             <ShopDetailScreen
-              onBack={() => setOpenShopSlug(null)}
+              onBack={() => setShopNav(null)}
+              onInfo={(slug) => setShopNav({ slug, mode: "info" })}
               onJoined={(token) => {
                 setTrackingToken(token);
-                setOpenShopSlug(null);
+                setShopNav(null);
                 setTab("queue");
               }}
-              slug={openShopSlug}
+              slug={shopNav.slug}
+            />
+          ) : shopNav?.mode === "info" ? (
+            <ShopInfoScreen
+              onBack={() => setShopNav(null)}
+              onJoin={(slug) => setShopNav({ slug, mode: "join" })}
+              slug={shopNav.slug}
             />
           ) : (
-            <NearbyScreen onOpenShop={setOpenShopSlug} />
+            <NearbyScreen
+              onOpenInfo={(slug) => setShopNav({ slug, mode: "info" })}
+              onOpenShop={(slug) => setShopNav({ slug, mode: "join" })}
+            />
           )
         ) : null}
         {tab === "queue" ? <QueueScreen onFindSalon={() => setTab("salons")} /> : null}
@@ -58,7 +69,7 @@ function Shell() {
                 key={item.key}
                 onPress={() => {
                   setTab(item.key);
-                  if (item.key !== "salons") setOpenShopSlug(null);
+                  if (item.key !== "salons") setShopNav(null);
                 }}
                 style={styles.tabItem}
               >
