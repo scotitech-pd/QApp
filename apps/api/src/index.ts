@@ -10,5 +10,5 @@ const server = createServer(app);
 initializeRealtime(server);
 
 server.listen(appConfig.port, appConfig.host, () => {
-  console.log(`Q-App API listening on http://${appConfig.host}:${appConfig.port}`);
+  console.log(`OnQ API listening on http://${appConfig.host}:${appConfig.port}`);
 });

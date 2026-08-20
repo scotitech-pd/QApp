@@ -2,7 +2,7 @@ export default function SmartArrivalPreviewPage() {
   return (
     <main className="page-shell">
       <section className="hero">
-        <span className="eyebrow">Q-App Preview</span>
+        <span className="eyebrow">OnQ Preview</span>
         <h1>Smart arrival in one glance</h1>
         <p>
           This preview shows the new `near turn`, `Are you coming?`, and operator confirmation states
@@ -34,7 +34,7 @@ export default function SmartArrivalPreviewPage() {
             <p className="status-callout">Near-turn alert sent at 14:22.</p>
             <div className="status-panel status-panel-warn">
               <strong>Are you coming?</strong>
-              <p>Confirm before 14:27 or Q-App will release this place and promote the next customer.</p>
+              <p>Confirm before 14:27 or OnQ will release this place and promote the next customer.</p>
               <div className="location-actions">
                 <button className="button primary" type="button">
                   Yes, I am coming

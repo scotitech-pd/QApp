@@ -4,10 +4,10 @@ export default function BusinessSignupPage() {
   return (
     <main className="page-shell">
       <section className="hero">
-        <span className="eyebrow">Q-App Business Signup</span>
+        <span className="eyebrow">OnQ Business Signup</span>
         <h1>Register your shop and confirm the exact storefront location.</h1>
         <p>
-          Q-App uses your saved coordinates for nearby discovery, distance
+          OnQ uses your saved coordinates for nearby discovery, distance
           calculations, and future smart-arrival timing. Location confirmation is
           mandatory before signup can be submitted.
         </p>

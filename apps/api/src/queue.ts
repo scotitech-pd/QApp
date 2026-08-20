@@ -665,7 +665,7 @@ export async function submitQueueFeedback(trackingToken: string, input: QueueFee
   });
 
   if (!wasSaved) {
-    throw ApiError.conflict("Reviews are not ready yet. Please try again after Q-App setup is complete.");
+    throw ApiError.conflict("Reviews are not ready yet. Please try again after OnQ setup is complete.");
   }
 
   emitQueueStatusUpdated(trackingToken);

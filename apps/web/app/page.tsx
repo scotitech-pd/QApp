@@ -19,7 +19,7 @@ export default function HomePage() {
   return (
     <main className="page-shell">
       <section className="hero">
-        <span className="eyebrow">Q-App for customers</span>
+        <span className="eyebrow">OnQ for customers</span>
         <h1>Stop waiting in the wrong place.</h1>
         <p>
           Check the real wait, join with your phone, and use your time somewhere better
@@ -36,7 +36,7 @@ export default function HomePage() {
       </section>
 
       <section className="section">
-        <h2>How Q-App helps</h2>
+        <h2>How OnQ helps</h2>
         <div className="customer-promise-grid">
           {customerPromises.map((promise) => (
             <article className="card promise-card" key={promise.title}>

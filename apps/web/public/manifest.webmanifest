@@ -1,6 +1,6 @@
 {
-  "name": "Q-App",
-  "short_name": "Q-App",
+  "name": "OnQ",
+  "short_name": "OnQ",
   "description": "Skip the wait. Join the queue from anywhere.",
   "start_url": "/",
   "scope": "/",

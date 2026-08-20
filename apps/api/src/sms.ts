@@ -47,5 +47,5 @@ export async function sendQueueAlertSms(to: string, body: string): Promise<SendO
 }
 
 export async function sendOtpSms(to: string, code: string): Promise<SendOtpResult> {
-  return sendQueueAlertSms(to, `Your Q-App verification code is ${code}. It expires in 10 minutes.`);
+  return sendQueueAlertSms(to, `Your OnQ verification code is ${code}. It expires in 10 minutes.`);
 }

@@ -8,7 +8,7 @@ export default async function QueueDashboardPage(props: {
   return (
     <main className="page-shell">
       <section className="hero hero-compact">
-        <span className="eyebrow">Q-App Shop Portal</span>
+        <span className="eyebrow">OnQ Shop Portal</span>
         <h1>See the live queue and run the shop floor.</h1>
         <p>
           Shop owners and staff can see how many customers are waiting, call the next customer,

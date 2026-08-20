@@ -26,7 +26,7 @@ export function createApp() {
 
   app.get("/v1/meta", (_req, res) => {
     sendItem(res, {
-      name: "Q-App API",
+      name: "OnQ API",
       version: "v1",
       purpose: "Mobile-first queue and scheduling backend",
       platformTargets: ["customer web", "barber portal", "future iOS app", "future Android app"],

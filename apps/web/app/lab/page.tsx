@@ -4,7 +4,7 @@ export default function ManualTestLabPage() {
   return (
     <main className="page-shell">
       <section className="hero hero-compact">
-        <span className="eyebrow">Q-App Device Lab</span>
+        <span className="eyebrow">OnQ Device Lab</span>
         <h1>Manual mobile-flow testing on one screen.</h1>
         <p>
           This lab is built for real API validation: auth, customer queueing, smart arrival, operator actions,

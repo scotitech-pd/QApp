@@ -43,11 +43,11 @@ Status: ✅ done · 🔄 in progress · ⬜ todo · Owner: F = Founder, C = Clau
 ### Sprint 1 — QR-first joining, LAN (Aug 20–24)
 | ID | Module | Item | Owner | Status |
 |---|---|---|---|---|
-| S1.1 | Brand | Rename Q-App → OnQ across web, native, manifest, copy | C | ⬜ |
-| S1.2 | Web/owner | Printable QR page per shop (`/ops/shops/<slug>/qr`): big QR + shop name + "Scan to join the queue" — print-ready A5 | C | ⬜ |
-| S1.3 | Web/customer | "Your turn" alert on tracking page: full-screen state + chime + vibration + flashing title + "keep page open" banner | C | ⬜ |
-| S1.4 | Web/customer | QR-entry polish: shop page leads with join card, wait summary above the fold on a phone | C | ⬜ |
-| S1.5 | QA | Two-phone LAN test via real QR scan: join on phone A, run floor on phone B, full loop incl. no-show branch | F+C | ⬜ |
+| S1.1 | Brand | Rename Q-App → OnQ across web, native, manifest, copy | C | ✅ |
+| S1.2 | Web/owner | Printable QR page per shop (`/ops/shops/<slug>/qr`): big QR + shop name + "Scan to join the queue" — print-ready A5 | C | ✅ |
+| S1.3 | Web/customer | "Your turn" alert on tracking page: chime + vibration + flashing title + "keep page open" banner (verified live: title flips to "🔔 Your turn — OnQ", page flips to Go now state via socket) | C | ✅ |
+| S1.4 | Web/customer | QR-entry polish: compact hero, join card above the fold | C | ✅ |
+| S1.5 | QA | Two-phone LAN test via real QR scan: join on phone A, run floor on phone B, full loop incl. no-show branch — code-side loop verified in browser+simulator; founder phone test pending | F+C | 🔄 |
 | S1.6 | Native | **Scan shop QR** on app home (expo-camera): scan counter code → shop opens in-app → join through app | C | ✅ |
 
 ### Sprint 2 — Shop readiness, LAN (Aug 25–28)

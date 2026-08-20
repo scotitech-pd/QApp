@@ -133,7 +133,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
           <Link className="brand-lockup" href={ownerContext ? "/shop/dashboard" : "/"}>
             <span className="brand-mark">Q</span>
             <span className="brand-text">
-              <strong>Q-App</strong>
+              <strong>OnQ</strong>
               <small>{brandTagline}</small>
             </span>
           </Link>
@@ -142,7 +142,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
             {isAuthenticated ? (
               <>
                 <div className="session-chip">
-                  <strong>{user?.firstName ?? "Q-App"}</strong>
+                  <strong>{user?.firstName ?? "OnQ"}</strong>
                   <small>{user?.email ?? "Signed in"}</small>
                 </div>
                 <button

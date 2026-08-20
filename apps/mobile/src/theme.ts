@@ -1,4 +1,4 @@
-// Q-App design tokens — from the "Salon queue management app" Claude Design
+// OnQ design tokens — from the "Salon queue management app" Claude Design
 // project (blueprint aesthetic: square corners, hairline borders, corner ticks).
 export const colors = {
   bg: "#F2F2F3",

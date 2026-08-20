@@ -12,7 +12,7 @@ export default function DocsIndexPage() {
     <main className="page-shell">
       <section className="hero">
         <span className="eyebrow">Planning Stack</span>
-        <h1>Q-App docs drive the build.</h1>
+        <h1>OnQ docs drive the build.</h1>
         <p>
           These files in the repository are the current source of truth for
           scope, flows, screens, and data modeling.

@@ -12,7 +12,7 @@ export default async function SignInPage(props: {
         <h1>Manage queues, staff access, and admin reviews.</h1>
         <p>
           Customers do not need to sign in to join a queue. This screen is only for shop teams
-          and Q-App admins.
+          and OnQ admins.
         </p>
       </section>
 

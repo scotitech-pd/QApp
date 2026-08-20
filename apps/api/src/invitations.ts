@@ -369,14 +369,14 @@ export async function acceptInvitationByToken(
         email: invitation.email
       },
       update: {
-        firstName: input.firstName ?? invitation.firstName ?? "Q-App",
+        firstName: input.firstName ?? invitation.firstName ?? "OnQ",
         lastName: input.lastName ?? invitation.lastName,
         passwordHash,
         failedLoginAttempts: 0,
         lockedUntil: null
       },
       create: {
-        firstName: input.firstName ?? invitation.firstName ?? "Q-App",
+        firstName: input.firstName ?? invitation.firstName ?? "OnQ",
         lastName: input.lastName ?? invitation.lastName,
         email: invitation.email,
         passwordHash,
@@ -428,7 +428,7 @@ export async function acceptInvitationByToken(
           data: {
             businessLocationId: invitation.businessLocationId,
             userId: user.id,
-            displayName: `${input.firstName ?? invitation.firstName ?? "Q-App"}${
+            displayName: `${input.firstName ?? invitation.firstName ?? "OnQ"}${
               input.lastName ?? invitation.lastName ? ` ${input.lastName ?? invitation.lastName}` : ""
             }`,
             skillTags: invitation.role === MembershipRole.MANAGER ? ["queue", "management"] : ["queue"]

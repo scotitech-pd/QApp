@@ -11,7 +11,7 @@ export function SignInClient({ nextPath }: { nextPath: string | null }) {
   const { busy, hasPlatformAdminAccess, isAuthenticated, login, preferredShopSlug, user } = useAuth();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [deviceName, setDeviceName] = useState("Q-App Web");
+  const [deviceName, setDeviceName] = useState("OnQ Web");
   const [platform, setPlatform] = useState("web");
   const [error, setError] = useState<string | null>(null);
   async function handleSubmit() {

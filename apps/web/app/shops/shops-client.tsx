@@ -397,7 +397,7 @@ export function ShopsClient() {
           </div>
           {favoriteItems.length === 0 ? (
             <p className="status-text">
-              Tap “Save favourite” on a shop. Q-App will remember it on this device and link it to your account later.
+              Tap “Save favourite” on a shop. OnQ will remember it on this device and link it to your account later.
             </p>
           ) : (
             <div className="favorite-shop-list">
@@ -439,12 +439,12 @@ export function ShopsClient() {
               <>
                 {guestProfile ? (
                   <p className="status-text">
-                    We are using your saved guest details. Q-App will still send an OTP so nobody else can join with your
+                    We are using your saved guest details. OnQ will still send an OTP so nobody else can join with your
                     number.
                   </p>
                 ) : (
                   <p className="status-text">
-                    First time here? Add your name and mobile once. After OTP verification, Q-App will remember this device
+                    First time here? Add your name and mobile once. After OTP verification, OnQ will remember this device
                     for faster joins.
                   </p>
                 )}

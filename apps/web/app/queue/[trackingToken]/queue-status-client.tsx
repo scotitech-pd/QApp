@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { LiveWaitTimer } from "../../components/live-wait-timer";
 import { requestJson, unwrapItem } from "../../lib/api";
@@ -125,7 +125,7 @@ function getCustomerStatusMessage(item: QueueStatus, awaitingArrivalResponse: bo
   }
 
   if (item.visitStatus === "COMPLETED") {
-    return "Your visit is finished. Thanks for using Q-App instead of standing around.";
+    return "Your visit is finished. Thanks for using OnQ instead of standing around.";
   }
 
   if (item.visitStatus === "IN_SERVICE") {
@@ -173,7 +173,7 @@ function getJourneySteps(item: QueueStatus, awaitingArrivalResponse: boolean) {
           ? "You confirmed"
           : item.confirmationStatus === "DECLINED" || item.confirmationStatus === "EXPIRED"
             ? "Place released"
-            : "Q-App will ask near your turn",
+            : "OnQ will ask near your turn",
       state: isReleased ? "warning" : awaitingArrivalResponse ? "active" : wasPrompted ? "done" : "pending"
     },
     {
@@ -211,6 +211,57 @@ export function QueueStatusClient({ trackingToken }: { trackingToken: string }) 
   const [feedbackComment, setFeedbackComment] = useState("");
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [alertsPrimed, setAlertsPrimed] = useState(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const alertActiveRef = useRef(false);
+  const titleFlashRef = useRef<number | null>(null);
+
+  function primeAlerts() {
+    try {
+      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (Ctx && !audioCtxRef.current) audioCtxRef.current = new Ctx();
+      void audioCtxRef.current?.resume();
+      playChime();
+      if (navigator.vibrate) navigator.vibrate(120);
+      setAlertsPrimed(true);
+    } catch {
+      setAlertsPrimed(true);
+    }
+  }
+
+  function playChime() {
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+    [0, 0.25, 0.5].forEach((offset, index) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = index === 2 ? 1046 : 784;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + offset);
+      gain.gain.exponentialRampToValueAtTime(0.28, ctx.currentTime + offset + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + offset + 0.22);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(ctx.currentTime + offset);
+      osc.stop(ctx.currentTime + offset + 0.24);
+    });
+  }
+
+  function startTitleFlash() {
+    if (titleFlashRef.current != null) return;
+    const original = document.title;
+    let flip = false;
+    titleFlashRef.current = window.setInterval(() => {
+      document.title = flip ? original : "🔔 Your turn — OnQ";
+      flip = !flip;
+    }, 1200);
+  }
+
+  function stopTitleFlash() {
+    if (titleFlashRef.current != null) {
+      window.clearInterval(titleFlashRef.current);
+      titleFlashRef.current = null;
+      document.title = "OnQ";
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -249,6 +300,26 @@ export function QueueStatusClient({ trackingToken }: { trackingToken: string }) 
       socket.off("queue:updated", handleUpdated);
     };
   }, [trackingToken]);
+
+  useEffect(() => {
+    const shouldAlert = Boolean(
+      item && (item.canRespondToArrival || item.visitStatus === "CALLED" || item.visitStatus === "READY")
+    );
+
+    if (shouldAlert && !alertActiveRef.current) {
+      alertActiveRef.current = true;
+      if (navigator.vibrate) navigator.vibrate([250, 120, 250, 120, 400]);
+      playChime();
+      startTitleFlash();
+    }
+
+    if (!shouldAlert && alertActiveRef.current) {
+      alertActiveRef.current = false;
+      stopTitleFlash();
+    }
+  }, [item]);
+
+  useEffect(() => () => stopTitleFlash(), []);
 
   async function sendArrivalResponse(response: "COMING" | "DECLINED") {
     setResponding(response);
@@ -382,7 +453,7 @@ export function QueueStatusClient({ trackingToken }: { trackingToken: string }) 
         ) : null}
         {savedWaitMin ? (
           <p className="status-callout good">
-            Q-App saved you about {savedWaitMin} minutes of standing-around time on this visit.
+            OnQ saved you about {savedWaitMin} minutes of standing-around time on this visit.
           </p>
         ) : null}
         {item.nearTurnNotifiedAt ? (
@@ -390,11 +461,21 @@ export function QueueStatusClient({ trackingToken }: { trackingToken: string }) 
             You were alerted near your turn at {new Date(item.nearTurnNotifiedAt).toLocaleTimeString()}.
           </p>
         ) : null}
+        {isWaitingForTurn && !awaitingArrivalResponse ? (
+          <div className="keep-open-banner">
+            <span>
+              Keep this page open — it buzzes and chimes here when it&apos;s nearly your turn.
+            </span>
+            <button className="button small" onClick={primeAlerts} type="button">
+              {alertsPrimed ? "Sound on ✓" : "🔔 Test alert"}
+            </button>
+          </div>
+        ) : null}
         {awaitingArrivalResponse ? (
           <div className="status-panel status-panel-warn">
             <strong>Are you coming?</strong>
             <p>
-              Confirm before {responseWindowLabel ?? "the timer ends"} or Q-App will release your place and
+              Confirm before {responseWindowLabel ?? "the timer ends"} or OnQ will release your place and
               promote the next customer.
             </p>
             <div className="location-actions">
@@ -446,7 +527,7 @@ export function QueueStatusClient({ trackingToken }: { trackingToken: string }) 
             <strong>{hasFeedback ? "Thanks for the feedback." : "How was this visit?"}</strong>
             <p>
               Optional feedback helps the shop improve. Total time saved across all visits will come later
-              when Q-App adds customer accounts.
+              when OnQ adds customer accounts.
             </p>
             {!hasFeedback ? (
               <>
@@ -497,9 +578,9 @@ export function QueueStatusClient({ trackingToken }: { trackingToken: string }) 
         <span className="eyebrow">What happens next</span>
         <h2>Wait without guessing.</h2>
         <ol className="list">
-          <li>While waiting, Q-App keeps your position and live wait visible.</li>
+          <li>While waiting, OnQ keeps your position and live wait visible.</li>
           <li>When the owner calls or starts your service, this page updates automatically.</li>
-          <li>When your visit is finished, Q-App shows a thank-you and optional feedback.</li>
+          <li>When your visit is finished, OnQ shows a thank-you and optional feedback.</li>
           <li>Lifetime saved-time stats will come later with customer accounts.</li>
         </ol>
       </article>

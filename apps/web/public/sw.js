@@ -1,4 +1,4 @@
-// Q-App service worker.
+// OnQ service worker.
 // Minimal by design: enough to make Chrome consider the app installable,
 // with a network-first strategy so live queue data is always fresh.
 // If a request fails while offline we return a lightweight fallback for navigations only.
@@ -53,9 +53,9 @@ self.addEventListener("fetch", (event) => {
 function offlineFallback(request) {
   if (request.mode === "navigate") {
     return new Response(
-      "<!doctype html><meta charset='utf-8'><title>Q-App offline</title>" +
+      "<!doctype html><meta charset='utf-8'><title>OnQ offline</title>" +
         "<style>body{background:#101828;color:#f4ebd0;font-family:system-ui;padding:2rem;text-align:center}</style>" +
-        "<h1>You are offline</h1><p>Q-App will refresh as soon as you are back on the network.</p>",
+        "<h1>You are offline</h1><p>OnQ will refresh as soon as you are back on the network.</p>",
       { status: 503, headers: { "content-type": "text/html; charset=utf-8" } }
     );
   }

@@ -7,17 +7,12 @@ export default async function ShopDetailPage(props: {
 
   return (
     <main className="page-shell">
-      <section className="hero">
-        <span className="eyebrow">Before you go</span>
-        <h1>Check the wait. Join only if it works for you.</h1>
-        <p>
-          No login. No appointment pressure. Just the current queue, the expected wait,
-          and a quick way to hold your place.
-        </p>
+      <section className="hero-compact">
+        <span className="eyebrow">Live queue</span>
+        <p className="status-text">Check the wait, hold your place, and come back when it&apos;s your turn.</p>
       </section>
 
       <section className="section">
-        <h2>Live queue</h2>
         <ShopDetailClient slug={params.slug} />
       </section>
     </main>

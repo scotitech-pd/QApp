@@ -179,7 +179,7 @@ export function QueueDashboardClient({ slug }: { slug: string }) {
   const [inviteFirstName, setInviteFirstName] = useState("New");
   const [inviteLastName, setInviteLastName] = useState("Staff");
   const [inviteRole, setInviteRole] = useState("STAFF_OPERATOR");
-  const [inviteNote, setInviteNote] = useState("Added from Q-App web operations");
+  const [inviteNote, setInviteNote] = useState("Added from OnQ web operations");
 
   const hasOpsAccess = hasBusinessRole(["OWNER", "MANAGER", "STAFF_OPERATOR"]);
   const canManageInvites = hasBusinessRole(["OWNER", "MANAGER"]);
@@ -321,13 +321,18 @@ export function QueueDashboardClient({ slug }: { slug: string }) {
         <div>
           <strong>{item.shop.name}</strong>
           <p className="status-text">
-            Signed in as {user?.firstName ?? "Q-App"} {user?.lastName ?? ""}
+            Signed in as {user?.firstName ?? "OnQ"} {user?.lastName ?? ""}
             {lastUpdatedAt ? ` · Live checked ${new Date(lastUpdatedAt).toLocaleTimeString()}` : ""}
           </p>
         </div>
-        <button className="button" onClick={() => void loadDashboard()} type="button">
-          Refresh
-        </button>
+        <div className="app-header-actions">
+          <Link className="button" href={`/ops/shops/${slug}/qr`}>
+            Print QR sign
+          </Link>
+          <button className="button" onClick={() => void loadDashboard()} type="button">
+            Refresh
+          </button>
+        </div>
       </div>
 
       {error ? <p className="status-text warning">{error}</p> : null}
@@ -380,7 +385,7 @@ export function QueueDashboardClient({ slug }: { slug: string }) {
           <h2>{nextActionTitle}</h2>
           <p>
             {activeService
-              ? "When the service is done, complete it here. Q-App will promote the next customer and refresh their wait screen."
+              ? "When the service is done, complete it here. OnQ will promote the next customer and refresh their wait screen."
               : nextEntry
                 ? `Current status: ${formatQueueStatus(nextEntry)}. ETA shown: ${nextEntry.visit.estimatedWaitMin ?? "recalculating"} min.`
                 : "No one is waiting. Keep walk-in intake ready and let customers join remotely."}

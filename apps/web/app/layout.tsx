@@ -6,14 +6,14 @@ import { AppProviders } from "./providers";
 import { ServiceWorkerRegister } from "./sw-register";
 
 export const metadata: Metadata = {
-  title: "Q-App",
+  title: "OnQ",
   description: "Real-time queue and smart arrival platform for service businesses.",
-  applicationName: "Q-App",
+  applicationName: "OnQ",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Q-App"
+    title: "OnQ"
   },
   icons: {
     icon: [

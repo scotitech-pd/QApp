@@ -1,4 +1,4 @@
-/* Q-App design system.
+/* OnQ design system.
  * Modern sans-serif, warm-neutral base, terracotta accent.
  * Mobile-first customer surfaces; tablet-friendly ops surfaces.
  */
@@ -1366,4 +1366,113 @@ code.inline {
   h1 { font-size: 1.8rem; }
   .card { padding: var(--space-5); }
   .queue-live-card { padding: var(--space-6); }
+}
+
+/* -------- QR counter sign -------- */
+
+.qr-sign-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  align-items: center;
+}
+
+.qr-sign-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.qr-sign {
+  width: min(420px, 92vw);
+  background: #ffffff;
+  border: 1px solid var(--border-strong);
+  padding: var(--space-8) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.qr-sign-kicker {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.qr-sign-title {
+  font-size: 2rem;
+  line-height: 1.1;
+}
+
+.qr-sign-sub {
+  font-size: 1.05rem;
+  color: var(--ink-2);
+}
+
+.qr-sign-code {
+  width: 100%;
+  max-width: 320px;
+  image-rendering: pixelated;
+}
+
+.qr-sign-note {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.qr-sign-brand {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin-top: var(--space-2);
+}
+
+@media print {
+  .app-header,
+  .bottom-nav,
+  .qr-sign-toolbar {
+    display: none !important;
+  }
+
+  .app-frame {
+    padding-bottom: 0;
+  }
+
+  .app-content {
+    padding: 0;
+    max-width: none;
+  }
+
+  .qr-sign {
+    width: 100%;
+    border: none;
+    min-height: 100vh;
+    justify-content: center;
+  }
+
+  body {
+    background: #ffffff;
+  }
+}
+
+/* -------- keep-open banner (queue tracking) -------- */
+
+.keep-open-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-strong);
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-size: 0.92rem;
+  border-radius: var(--radius-md);
 }

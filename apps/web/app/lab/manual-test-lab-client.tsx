@@ -230,21 +230,21 @@ const demoCredentials = [
     label: "Owner",
     identifier: "owner@fadeyard.demo",
     password: "QappOwner123!",
-    deviceName: "Q-App Lab iPhone",
+    deviceName: "OnQ Lab iPhone",
     platform: "ios"
   },
   {
     label: "Staff",
     identifier: "staff@fadeyard.demo",
     password: "QappStaff123!",
-    deviceName: "Q-App Lab Android",
+    deviceName: "OnQ Lab Android",
     platform: "android"
   },
   {
     label: "Admin",
     identifier: "admin@qapp.demo",
     password: "QappAdmin123!",
-    deviceName: "Q-App Lab Desktop",
+    deviceName: "OnQ Lab Desktop",
     platform: "web"
   }
 ];
@@ -954,7 +954,7 @@ export function ManualTestLabClient() {
         <div>
           <h2>Device Lab</h2>
           <p>
-            Use this page on phones, tablets, and desktop browsers to validate the real `Q-App` mobile-facing
+            Use this page on phones, tablets, and desktop browsers to validate the real `OnQ` mobile-facing
             APIs against end-to-end flows.
           </p>
         </div>

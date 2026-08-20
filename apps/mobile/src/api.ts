@@ -225,7 +225,7 @@ export const api = {
   login: (identifier: string, password: string) =>
     request<LoginResult>("/auth/login", {
       method: "POST",
-      body: { identifier, password, deviceName: "Q-App Mobile", platform: "ios" }
+      body: { identifier, password, deviceName: "OnQ Mobile", platform: "ios" }
     }),
   me: (token: string) => request<SessionUser>("/auth/me", { token }),
   opsDashboard: (token: string, slug: string) =>

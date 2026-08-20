@@ -11,7 +11,7 @@ export default async function QueueStatusPage(props: {
         <span className="eyebrow">Your place is held</span>
         <h1>Now you can wait somewhere better.</h1>
         <p>
-          Keep this page open. Q-App will show your live position and ask for a quick
+          Keep this page open. OnQ will show your live position and ask for a quick
           yes or no when the shop needs to know if you are coming.
         </p>
       </section>
