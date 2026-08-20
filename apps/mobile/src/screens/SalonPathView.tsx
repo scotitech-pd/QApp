@@ -10,7 +10,7 @@ import {
   UIManager,
   View
 } from "react-native";
-import Svg, { Path, Rect } from "react-native-svg";
+import Svg, { Circle, Ellipse, G, Path, Rect } from "react-native-svg";
 
 import type { ShopSummary } from "../api";
 import { colors, fonts, radius, shadowCard, shadowFloat, shadowSoft, space } from "../theme";
@@ -46,6 +46,29 @@ function shortDistance(shop: ShopSummary) {
   if (km == null) return "—";
   if (km < 1) return `${Math.max(50, Math.round((km * 1000) / 50) * 50)} m`;
   return `${km.toFixed(1)} km`;
+}
+
+function TreeG({ x, y, s }: { x: number; y: number; s: number }) {
+  return (
+    <G transform={`translate(${x}, ${y}) scale(${s})`}>
+      <Ellipse cx={0} cy={2.5} fill="rgba(16,24,40,0.09)" rx={11} ry={3.2} />
+      <Rect fill="#9A7B5C" height={9} rx={1.3} width={2.8} x={-1.4} y={-9} />
+      <Circle cx={0} cy={-15} fill="#87AC93" r={8} />
+      <Circle cx={-5} cy={-10.5} fill="#97BBA2" r={5.8} />
+      <Circle cx={5} cy={-11} fill="#76a084" r={6} />
+    </G>
+  );
+}
+
+function StoneG({ x, y, s }: { x: number; y: number; s: number }) {
+  return (
+    <G transform={`translate(${x}, ${y}) scale(${s})`}>
+      <Ellipse cx={0} cy={1.8} fill="rgba(16,24,40,0.09)" rx={8.5} ry={2.6} />
+      <Ellipse cx={0} cy={-2.2} fill="#C4C8CE" rx={7} ry={4.8} />
+      <Ellipse cx={-1.8} cy={-3.8} fill="#D8DBDF" rx={3.6} ry={2.1} />
+      <Ellipse cx={8} cy={0} fill="#CDD1D6" rx={3.4} ry={2.3} />
+    </G>
+  );
 }
 
 function Storefront({ size, tint }: { size: number; tint: string }) {
@@ -256,17 +279,36 @@ export function SalonPathView({
 
   const height = (centers[centers.length - 1]?.cy ?? TOP_PAD) + 90;
 
+  /* Trail with true S-bends: every segment swings through a laterally offset
+   * midpoint, so the path meanders like a garden walk instead of zigzagging. */
+  const depthScale = (y: number) => Math.max(0.6, 1.15 - (y / Math.max(1, height)) * 0.55);
+
   let d = "";
+  const scenery: Array<{ kind: "tree" | "stone"; x: number; y: number; s: number }> = [];
   if (width > 0 && centers.length > 0) {
     const startX = 0.26 * width;
     let prevX = startX;
     let prevY = 16;
     d = `M ${startX} ${prevY}`;
-    centers.forEach(({ xFrac, cy, j }) => {
+    centers.forEach(({ xFrac, cy, j }, index) => {
       const x = xFrac * width;
-      const bend = (j - 0.5) * 90; // organic, per-shop curvature
-      const midY = (prevY + cy) / 2;
-      d += ` C ${prevX + bend} ${midY}, ${x - bend} ${midY}, ${x} ${cy}`;
+      const dy = cy - prevY;
+      const swing = (j - 0.5) * 2 * (0.28 * width) * (index % 2 === 0 ? 1 : -1);
+      const midX = Math.min(width - 30, Math.max(30, (prevX + x) / 2 + swing));
+      const midY = prevY + dy * (0.42 + (j - 0.5) * 0.12);
+      d += ` C ${prevX} ${prevY + dy * 0.3}, ${midX} ${midY - dy * 0.22}, ${midX} ${midY}`;
+      d += ` C ${midX} ${midY + dy * 0.22}, ${x} ${cy - dy * 0.3}, ${x} ${cy}`;
+
+      // Scatter scenery beside this segment, away from the trail line.
+      const side = j > 0.5 ? 1 : -1;
+      const t1x = (prevX + midX) / 2 - side * (46 + j * 30);
+      const t1y = prevY + dy * 0.3;
+      const t2x = (midX + x) / 2 + side * (52 + (1 - j) * 28);
+      const t2y = prevY + dy * 0.72;
+      const clampX = (value: number) => Math.min(width - 18, Math.max(18, value));
+      scenery.push({ kind: j > 0.35 ? "tree" : "stone", x: clampX(t1x), y: t1y, s: depthScale(t1y) });
+      scenery.push({ kind: j > 0.7 ? "stone" : "tree", x: clampX(t2x), y: t2y, s: depthScale(t2y) * 0.85 });
+
       prevX = x;
       prevY = cy;
     });
@@ -325,6 +367,23 @@ export function SalonPathView({
         {width > 0 ? (
           <Svg height={height} pointerEvents="none" style={{ position: "absolute", inset: 0 }} width={width}>
             <Path d={d} fill="none" stroke={colors.accent200} strokeDasharray="1 9" strokeLinecap="round" strokeWidth={3} />
+            {centers.map(({ xFrac, cy }, index) => (
+              <Ellipse
+                cx={xFrac * width}
+                cy={cy + markerSize(index) / 2 + 5}
+                fill="rgba(16,24,40,0.10)"
+                key={`shadow-${stops[index].slug}`}
+                rx={markerSize(index) * 0.42}
+                ry={5}
+              />
+            ))}
+            {scenery.map((item, index) =>
+              item.kind === "tree" ? (
+                <TreeG key={`scenery-${index}`} s={item.s} x={item.x} y={item.y} />
+              ) : (
+                <StoneG key={`scenery-${index}`} s={item.s} x={item.x} y={item.y} />
+              )
+            )}
           </Svg>
         ) : null}
 
