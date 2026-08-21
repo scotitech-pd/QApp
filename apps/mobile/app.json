@@ -2,7 +2,7 @@
   "expo": {
     "name": "OnQ",
     "slug": "q-app",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,7 +14,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.scotitech.qapp"
+      "bundleIdentifier": "com.scotitech.qapp",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +23,22 @@
         "backgroundColor": "#101828"
       },
       "package": "com.scotitech.qapp",
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": [
+            "DEFAULT",
+            "BROWSABLE"
+          ],
+          "data": [
+            {
+              "scheme": "com.scotitech.qapp"
+            }
+          ]
+        }
+      ],
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"

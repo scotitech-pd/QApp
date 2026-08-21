@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-import type { CustomerProfile, SessionUser } from "./api";
+import { api, type CustomerProfile, type SessionUser } from "./api";
 
 type StoreValue = {
   ready: boolean;
@@ -15,6 +15,11 @@ type StoreValue = {
   customerToken: string | null;
   customerProfile: CustomerProfile | null;
   setCustomerSession: (token: string | null, profile: CustomerProfile | null) => void;
+  /** Stable per-install key that favourites hang off (works without an account). */
+  deviceKey: string | null;
+  favoriteSlugs: string[];
+  setFavoriteSlugs: (slugs: string[]) => void;
+  toggleFavorite: (slug: string) => Promise<void>;
 };
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -25,8 +30,15 @@ const KEYS = {
   user: "qapp.user",
   opsShopSlug: "qapp.opsShopSlug",
   customerToken: "qapp.customerToken",
-  customerProfile: "qapp.customerProfile"
+  customerProfile: "qapp.customerProfile",
+  deviceKey: "qapp.deviceKey",
+  favorites: "qapp.favorites"
 };
+
+function createDeviceKey() {
+  const rand = () => Math.random().toString(36).slice(2, 10);
+  return `onq-${Date.now().toString(36)}-${rand()}${rand()}`;
+}
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -36,6 +48,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [opsShopSlug, setOpsShopSlugState] = useState<string | null>(null);
   const [customerToken, setCustomerToken] = useState<string | null>(null);
   const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
+  const [deviceKey, setDeviceKey] = useState<string | null>(null);
+  const [favoriteSlugs, setFavoriteSlugsState] = useState<string[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        let key = await AsyncStorage.getItem(KEYS.deviceKey);
+        if (!key) {
+          key = createDeviceKey();
+          await AsyncStorage.setItem(KEYS.deviceKey, key);
+        }
+        setDeviceKey(key);
+        const cached = await AsyncStorage.getItem(KEYS.favorites);
+        if (cached) setFavoriteSlugsState(JSON.parse(cached));
+        const remote = await api.listFavorites(key).catch(() => null);
+        if (remote) {
+          const slugs = remote.map((shop) => shop.slug);
+          setFavoriteSlugsState(slugs);
+          void AsyncStorage.setItem(KEYS.favorites, JSON.stringify(slugs));
+        }
+      } catch {
+        // favourites are a nicety; never block startup
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -97,9 +134,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         else void AsyncStorage.removeItem(KEYS.customerToken);
         if (nextProfile) void AsyncStorage.setItem(KEYS.customerProfile, JSON.stringify(nextProfile));
         else void AsyncStorage.removeItem(KEYS.customerProfile);
+      },
+      deviceKey,
+      favoriteSlugs,
+      setFavoriteSlugs: (slugs) => {
+        setFavoriteSlugsState(slugs);
+        void AsyncStorage.setItem(KEYS.favorites, JSON.stringify(slugs));
+      },
+      toggleFavorite: async (slug) => {
+        if (!deviceKey) return;
+        const on = !favoriteSlugs.includes(slug);
+        const next = on ? [...favoriteSlugs, slug] : favoriteSlugs.filter((item) => item !== slug);
+        setFavoriteSlugsState(next);
+        void AsyncStorage.setItem(KEYS.favorites, JSON.stringify(next));
+        try {
+          await api.setFavorite(deviceKey, slug, on);
+        } catch {
+          setFavoriteSlugsState(favoriteSlugs);
+          void AsyncStorage.setItem(KEYS.favorites, JSON.stringify(favoriteSlugs));
+        }
       }
     }),
-    [ready, trackingToken, accessToken, user, opsShopSlug, customerToken, customerProfile]
+    [ready, trackingToken, accessToken, user, opsShopSlug, customerToken, customerProfile, deviceKey, favoriteSlugs]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

@@ -1593,3 +1593,10 @@ code.inline {
   gap: var(--space-3);
   width: 100%;
 }
+
+/* -------- legal pages -------- */
+
+.legal-page { max-width: 760px; }
+.legal-body { gap: var(--space-3); }
+.legal-body h2 { font-size: 1.15rem; margin-top: var(--space-4); }
+.legal-body p { color: var(--ink-2); line-height: 1.6; }

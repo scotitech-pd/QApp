@@ -568,6 +568,8 @@ model Customer {
   appleUserId            String?                 @unique
   googleUserId           String?                 @unique
   lastSignInAt           DateTime?
+  avatarUrl              String?
+  deletedAt              DateTime?
   phoneVerifiedAt        DateTime?
   marketingOptInAt       DateTime?
   visits                 Visit[]

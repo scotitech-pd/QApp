@@ -4,13 +4,17 @@ import { ApiError } from "../core/api-error";
 import { asyncHandler, sendItem } from "../core/http";
 import {
   claimVisit,
+  deleteCustomerAccount,
   getCustomerHistory,
   getCustomerProfile,
+  linkDeviceToCustomer,
   signInCustomer,
+  updateCustomerProfile,
   verifyAppleIdentityToken,
   verifyCustomerToken,
   verifyGoogleIdToken
 } from "../customer-auth";
+import { normalizeDeviceKey } from "../preferences";
 
 function requireCustomer(req: Request) {
   const header = req.header("authorization") ?? "";
@@ -48,6 +52,30 @@ export function createCustomerRouter() {
     "/customer/me",
     asyncHandler(async (req, res) => {
       sendItem(res, await getCustomerProfile(requireCustomer(req)));
+    })
+  );
+
+  router.patch(
+    "/customer/me",
+    asyncHandler(async (req, res) => {
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      sendItem(res, await updateCustomerProfile(requireCustomer(req), { firstName: body.firstName }));
+    })
+  );
+
+  router.delete(
+    "/customer/me",
+    asyncHandler(async (req, res) => {
+      sendItem(res, await deleteCustomerAccount(requireCustomer(req)));
+    })
+  );
+
+  router.post(
+    "/customer/me/link-device",
+    asyncHandler(async (req, res) => {
+      const deviceKey = normalizeDeviceKey((req.body as Record<string, unknown> | undefined)?.deviceKey);
+      if (!deviceKey) throw ApiError.badRequest("deviceKey is required.");
+      sendItem(res, await linkDeviceToCustomer(requireCustomer(req), deviceKey));
     })
   );
 

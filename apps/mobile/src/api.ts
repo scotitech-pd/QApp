@@ -15,13 +15,14 @@ export class ApiRequestError extends Error {
 
 async function request<T>(
   path: string,
-  options: { method?: string; body?: Json; token?: string | null } = {}
+  options: { method?: string; body?: Json; token?: string | null; deviceKey?: string | null } = {}
 ): Promise<T> {
   const response = await fetch(`${API_BASE_URL}/v1${path}`, {
     method: options.method ?? "GET",
     headers: {
       "content-type": "application/json",
-      ...(options.token ? { authorization: `Bearer ${options.token}` } : {})
+      ...(options.token ? { authorization: `Bearer ${options.token}` } : {}),
+      ...(options.deviceKey ? { "X-QApp-Device-Id": options.deviceKey } : {})
     },
     body: options.body ? JSON.stringify(options.body) : undefined
   });
@@ -227,7 +228,10 @@ export type CustomerProfile = {
   firstName: string;
   email: string | null;
   phone: string | null;
+  avatarUrl?: string | null;
+  memberSince?: string;
   providers: string[];
+  stats?: { visits: number; ratings: number; favorites: number };
 };
 
 export type VisitHistoryItem = {
@@ -366,5 +370,16 @@ export const api = {
   customerMe: (token: string) => request<CustomerProfile>("/customer/me", { token }),
   customerHistory: (token: string) => request<VisitHistoryItem[]>("/customer/me/history", { token }),
   customerClaim: (token: string, trackingToken: string) =>
-    request<CustomerProfile>("/customer/me/claim", { method: "POST", body: { trackingToken }, token })
+    request<CustomerProfile>("/customer/me/claim", { method: "POST", body: { trackingToken }, token }),
+  customerUpdate: (token: string, firstName: string) =>
+    request<CustomerProfile>("/customer/me", { method: "PATCH", body: { firstName }, token }),
+  customerDelete: (token: string) => request<{ deleted: boolean }>("/customer/me", { method: "DELETE", token }),
+  customerLinkDevice: (token: string, deviceKey: string) =>
+    request<{ linked: boolean }>("/customer/me/link-device", { method: "POST", body: { deviceKey }, token }),
+
+  // ---------- Favourites (per device; linked to the account on sign-in) ----------
+
+  listFavorites: (deviceKey: string) => request<ShopSummary[]>("/preferences/favorites", { deviceKey }),
+  setFavorite: (deviceKey: string, slug: string, on: boolean) =>
+    request<unknown>(`/preferences/favorites/${slug}`, { method: on ? "PUT" : "DELETE", deviceKey })
 };
