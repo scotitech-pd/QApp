@@ -429,3 +429,23 @@ export async function rejectBusinessSignup(id: string, reason?: string) {
 
   return serializeSignup(updatedSignup);
 }
+
+/** Public status check for an owner waiting on approval (email + mobile must both match). */
+export async function getBusinessSignupStatus(email: string, mobileNumber: string) {
+  const signup = await prisma.businessSignup.findFirst({
+    where: { email: email.trim().toLowerCase(), mobileNumber: mobileNumber.trim() },
+    orderBy: { createdAt: "desc" }
+  });
+
+  if (!signup) {
+    throw ApiError.notFound("No registration found for these details.");
+  }
+
+  return {
+    businessName: signup.businessName,
+    approvalStatus: signup.approvalStatus,
+    submittedAt: signup.createdAt.toISOString(),
+    approvedAt: signup.approvedAt?.toISOString() ?? null,
+    rejectionReason: signup.rejectionReason
+  };
+}

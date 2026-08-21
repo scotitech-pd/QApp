@@ -195,6 +195,33 @@ export type ShopCustomerRecord = {
   lastVisitAt: string | null;
 };
 
+export type BusinessSignupPayload = {
+  businessName: string;
+  ownerName: string;
+  mobileNumber: string;
+  email: string;
+  password: string;
+  industryType: string;
+  serviceStationsCount: number;
+  openingHoursNote: string;
+  latitude: number;
+  longitude: number;
+  geolocationSource: "BROWSER_GPS" | "MANUAL_PIN";
+  pinConfirmedAt: string;
+  addressLine1?: string;
+  city?: string;
+  postalCode?: string;
+  countryCode?: string;
+};
+
+export type BusinessSignupStatus = {
+  businessName: string;
+  approvalStatus: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
+  submittedAt: string;
+  approvedAt: string | null;
+  rejectionReason: string | null;
+};
+
 export type CustomerProfile = {
   id: string;
   firstName: string;
@@ -319,6 +346,13 @@ export const api = {
   opsCustomers: (token: string, slug: string) =>
     request<ShopCustomerRecord[]>(`/ops/shops/${slug}/customers`, { token })
 ,
+
+  // ---------- Business onboarding (owner without an account) ----------
+
+  businessSignup: (payload: BusinessSignupPayload) =>
+    request<{ id: string; approvalStatus: string; createdAt: string }>("/business-signups", { method: "POST", body: payload }),
+  businessSignupStatus: (email: string, mobileNumber: string) =>
+    request<BusinessSignupStatus>("/business-signups/status", { method: "POST", body: { email, mobileNumber } }),
 
   // ---------- Customer accounts (optional sign-in) ----------
 

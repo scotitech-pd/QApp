@@ -7,6 +7,7 @@ import { requireAuthenticatedUser, requirePlatformAdmin } from "../middleware/au
 import {
   approveBusinessSignup,
   createBusinessSignupRecord,
+  getBusinessSignupStatus,
   listBusinessSignups,
   rejectBusinessSignup,
   validateBusinessSignupInput
@@ -42,6 +43,17 @@ export function createBusinessSignupsRouter() {
 
       const item = await createBusinessSignupRecord(parsed.data);
       sendItem(res, item, 201);
+    })
+  );
+
+  router.post(
+    "/business-signups/status",
+    asyncHandler(async (req, res) => {
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      if (typeof body.email !== "string" || typeof body.mobileNumber !== "string") {
+        throw ApiError.badRequest("email and mobileNumber are required.");
+      }
+      sendItem(res, await getBusinessSignupStatus(body.email, body.mobileNumber));
     })
   );
 

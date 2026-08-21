@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useState } from "react";
 import { Linking, Pressable, Text, View } from "react-native";
 
@@ -6,6 +7,10 @@ import { WEB_BASE_URL } from "../config";
 import { useStore } from "../store";
 import { colors, fonts, radius, shadowSoft, space } from "../theme";
 import { Blueprint, Button, Field, Kicker, Loading, Note, Screen, Tag } from "../ui";
+import { RegisterShopScreen } from "./RegisterShopScreen";
+
+const PENDING_KEY = "qapp.pendingSignup";
+type PendingSignup = { email: string; mobileNumber: string; businessName: string; submittedAt: string };
 
 type OwnerTab = "queue" | "customers" | "earnings";
 
@@ -125,6 +130,42 @@ export function ShopPortalScreen() {
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [walkInName, setWalkInName] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [portalMode, setPortalMode] = useState<"signin" | "register">("signin");
+  const [pending, setPending] = useState<PendingSignup | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(PENDING_KEY)
+      .then((raw) => {
+        if (raw) setPending(JSON.parse(raw));
+      })
+      .catch(() => undefined);
+  }, []);
+
+  async function checkPending() {
+    if (!pending) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const status = await api.businessSignupStatus(pending.email, pending.mobileNumber);
+      if (status.approvalStatus === "APPROVED") {
+        setPendingStatus(`Approved! Sign in below as ${pending.email} with the password you chose.`);
+        setIdentifier(pending.email);
+        await AsyncStorage.removeItem(PENDING_KEY);
+        setPending(null);
+      } else if (status.approvalStatus === "REJECTED") {
+        setPendingStatus(`Not approved${status.rejectionReason ? `: ${status.rejectionReason}` : "."} You can register again.`);
+        await AsyncStorage.removeItem(PENDING_KEY);
+        setPending(null);
+      } else {
+        setPendingStatus("Still under review — usually same day. We'll make it live as soon as it's checked.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not check status.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const slug = opsShopSlug;
 
@@ -186,9 +227,40 @@ export function ShopPortalScreen() {
     }
   }
 
+  if (!accessToken && portalMode === "register") {
+    return (
+      <RegisterShopScreen
+        onBack={() => setPortalMode("signin")}
+        onSubmitted={(submittedEmail, submittedMobile, businessName) => {
+          const record: PendingSignup = { email: submittedEmail, mobileNumber: submittedMobile, businessName, submittedAt: new Date().toISOString() };
+          setPending(record);
+          setPendingStatus(`Thanks — ${businessName} is submitted. We review every shop by hand, usually the same day.`);
+          setIdentifier(submittedEmail);
+          void AsyncStorage.setItem(PENDING_KEY, JSON.stringify(record));
+          setPortalMode("signin");
+        }}
+      />
+    );
+  }
+
   if (!accessToken) {
     return (
       <Screen subtitle="For salon owners and staff. Customers don't need an account." title="Shop sign in">
+        {pending || pendingStatus ? (
+          <Blueprint style={{ backgroundColor: colors.accent100 }}>
+            <Text style={{ fontFamily: fonts.heading, fontSize: 16, color: colors.text }}>
+              {pending ? `${pending.businessName} · awaiting approval` : "Registration update"}
+            </Text>
+            <Text style={{ fontFamily: fonts.body, fontSize: 13.5, color: colors.neutral700, marginTop: 4, lineHeight: 19 }}>
+              {pendingStatus ?? `Submitted ${new Date(pending!.submittedAt).toLocaleDateString()}. Check back here — once approved, sign in below.`}
+            </Text>
+            {pending ? (
+              <View style={{ marginTop: space(2), alignSelf: "flex-start" }}>
+                <Button kind="secondary" label="Check status" loading={busy} onPress={() => void checkPending()} small />
+              </View>
+            ) : null}
+          </Blueprint>
+        ) : null}
         <Field
           autoCapitalize="none"
           keyboardType="email-address"
@@ -204,6 +276,12 @@ export function ShopPortalScreen() {
           </View>
         ) : null}
         <Button blueprint disabled={!identifier.trim() || !password} label="Sign in" loading={busy} onPress={() => void signIn()} />
+        <View style={{ marginTop: space(5), alignItems: "center", gap: space(1) }}>
+          <Note center tone="faint">
+            New here? Get your shop on OnQ — free during the pilot.
+          </Note>
+          <Button kind="ghost" label="Register your shop" onPress={() => setPortalMode("register")} small />
+        </View>
       </Screen>
     );
   }

@@ -1,0 +1,285 @@
+import * as Location from "expo-location";
+import React, { useState } from "react";
+import { Pressable, Text, View } from "react-native";
+
+import { api, type BusinessSignupPayload } from "../api";
+import { colors, fonts, radius, space } from "../theme";
+import { BackLink, Blueprint, Button, Field, Kicker, Note, Screen } from "../ui";
+
+const INDUSTRIES: Array<{ key: string; label: string }> = [
+  { key: "BARBER", label: "Barber" },
+  { key: "SALON", label: "Salon" },
+  { key: "NAIL_STUDIO", label: "Nails" },
+  { key: "BEAUTY_CLINIC", label: "Beauty" },
+  { key: "OTHER", label: "Other" }
+];
+
+type Step = "details" | "location";
+
+export function RegisterShopScreen({
+  onBack,
+  onSubmitted
+}: {
+  onBack: () => void;
+  onSubmitted: (email: string, mobileNumber: string, businessName: string) => void;
+}) {
+  const [step, setStep] = useState<Step>("details");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Dev builds prefill a demo shop so simulator walkthroughs are two taps.
+  const demo = __DEV__;
+  const [businessName, setBusinessName] = useState(demo ? "Sharma Hair Studio" : "");
+  const [ownerName, setOwnerName] = useState(demo ? "Ravi Sharma" : "");
+  const [email, setEmail] = useState(demo ? `owner${Date.now() % 100000}@sharmahair.demo` : "");
+  const [mobileNumber, setMobileNumber] = useState(demo ? `+9198765${String(Date.now() % 100000).padStart(5, "0")}` : "");
+  const [password, setPassword] = useState(demo ? "DemoShop12345!" : "");
+  const [passwordConfirm, setPasswordConfirm] = useState(demo ? "DemoShop12345!" : "");
+  const [industryType, setIndustryType] = useState("BARBER");
+  const [chairs, setChairs] = useState("2");
+  const [openingHoursNote, setOpeningHoursNote] = useState(demo ? "Mon–Sat 9am–8pm, Sun closed" : "");
+
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number; accuracy: number | null; source: "BROWSER_GPS" | "MANUAL_PIN" } | null>(null);
+  const [manualLat, setManualLat] = useState("");
+  const [manualLng, setManualLng] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const [showAddress, setShowAddress] = useState(false);
+  const [addressLine1, setAddressLine1] = useState("");
+  const [city, setCity] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [locating, setLocating] = useState(false);
+
+  function validateDetails() {
+    if (!businessName.trim() || !ownerName.trim() || !email.trim() || !mobileNumber.trim()) return "Fill in every field.";
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return "That email doesn't look right.";
+    if (mobileNumber.replace(/\D/g, "").length < 7) return "Enter a valid mobile number.";
+    if (password.length < 10) return "Password needs at least 10 characters.";
+    if (password !== passwordConfirm) return "Passwords don't match.";
+    if (!openingHoursNote.trim()) return "Add your opening hours (e.g. Mon–Sat 9am–8pm).";
+    if (!Number(chairs) || Number(chairs) < 1) return "How many chairs or stations do you run?";
+    return null;
+  }
+
+  async function useMyLocation() {
+    setLocating(true);
+    setError(null);
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (!permission.granted) throw new Error("Location permission is needed to pin your shop — or type the coordinates below.");
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+      setCoords({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy ?? null,
+        source: "BROWSER_GPS"
+      });
+      setConfirmed(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not get your location.");
+    } finally {
+      setLocating(false);
+    }
+  }
+
+  function applyManual() {
+    const lat = Number(manualLat);
+    const lng = Number(manualLng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      setError("Enter coordinates like 12.9716 and 77.5946.");
+      return;
+    }
+    setError(null);
+    setCoords({ latitude: lat, longitude: lng, accuracy: null, source: "MANUAL_PIN" });
+    setConfirmed(false);
+  }
+
+  async function submit() {
+    if (!coords || !confirmed) {
+      setError("Pin your shop and confirm it's the front door.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const payload: BusinessSignupPayload = {
+        businessName: businessName.trim(),
+        ownerName: ownerName.trim(),
+        mobileNumber: mobileNumber.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        industryType,
+        serviceStationsCount: Number(chairs),
+        openingHoursNote: openingHoursNote.trim(),
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        geolocationSource: coords.source,
+        pinConfirmedAt: new Date().toISOString(),
+        ...(addressLine1.trim() ? { addressLine1: addressLine1.trim() } : {}),
+        ...(city.trim() ? { city: city.trim() } : {}),
+        ...(postalCode.trim() ? { postalCode: postalCode.trim() } : {})
+      };
+      await api.businessSignup(payload);
+      onSubmitted(payload.email, payload.mobileNumber, payload.businessName);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not submit. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (step === "details") {
+    return (
+      <Screen
+        headerLeft={<BackLink label="Sign in" onPress={onBack} />}
+        subtitle="Free during the pilot. We review every shop by hand — usually the same day."
+        title="Register your shop"
+      >
+        <View style={{ marginBottom: space(2) }}>
+          <Kicker>Step 1 of 2 · Your shop</Kicker>
+        </View>
+        <Field label="Shop name" onChangeText={setBusinessName} placeholder="e.g. Sharma Hair Studio" value={businessName} />
+        <Field label="Your name" onChangeText={setOwnerName} placeholder="Owner or manager" value={ownerName} />
+        <Field autoCapitalize="none" keyboardType="email-address" label="Email (your login)" onChangeText={setEmail} placeholder="you@shop.com" value={email} />
+        <Field autoCapitalize="none" keyboardType="phone-pad" label="Mobile number" onChangeText={setMobileNumber} placeholder="+91 98…" value={mobileNumber} />
+        <Field autoCapitalize="none" label="Choose a password (10+ characters)" onChangeText={setPassword} secureTextEntry value={password} />
+        <Field autoCapitalize="none" label="Confirm password" onChangeText={setPasswordConfirm} secureTextEntry value={passwordConfirm} />
+
+        <Text style={{ fontSize: 12, color: "rgba(29, 31, 32, 0.7)", fontFamily: fonts.bodyMedium, marginBottom: 6 }}>What kind of shop?</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(2), marginBottom: space(3) }}>
+          {INDUSTRIES.map((item) => {
+            const active = industryType === item.key;
+            return (
+              <Pressable
+                key={item.key}
+                onPress={() => setIndustryType(item.key)}
+                style={{
+                  paddingHorizontal: space(3.5),
+                  paddingVertical: space(2),
+                  borderRadius: radius.full,
+                  backgroundColor: active ? colors.accent : colors.surface,
+                  borderWidth: 1,
+                  borderColor: active ? colors.accent : colors.dividerSoft
+                }}
+              >
+                <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 13, color: active ? "#FFFFFF" : colors.text }}>{item.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Field keyboardType="number-pad" label="Chairs or stations" onChangeText={setChairs} value={chairs} />
+        <Field label="Opening hours" onChangeText={setOpeningHoursNote} placeholder="Mon–Sat 9am–8pm, Sun closed" value={openingHoursNote} />
+
+        {error ? (
+          <View style={{ marginBottom: space(3) }}>
+            <Note tone="danger">{error}</Note>
+          </View>
+        ) : null}
+        <Button
+          label="Next: pin your location"
+          onPress={() => {
+            const problem = validateDetails();
+            if (problem) {
+              setError(problem);
+              return;
+            }
+            setError(null);
+            setStep("location");
+          }}
+        />
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen
+      headerLeft={<BackLink label="Your shop" onPress={() => setStep("details")} />}
+      subtitle="Customers are routed by distance, so the pin must be your front door."
+      title="Pin your shop"
+    >
+      <View style={{ marginBottom: space(2) }}>
+        <Kicker>Step 2 of 2 · Location</Kicker>
+      </View>
+
+      <Button kind={coords ? "secondary" : "primary"} label={locating ? "Finding you…" : "Use my current location"} loading={locating} onPress={() => void useMyLocation()} />
+      <View style={{ marginTop: space(2) }}>
+        <Note center tone="faint">
+          Standing in the shop? That's the most accurate pin.
+        </Note>
+      </View>
+
+      <View style={{ marginTop: space(4) }}>
+        <Blueprint>
+          <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.neutral700, marginBottom: space(2) }}>Or type coordinates</Text>
+          <View style={{ flexDirection: "row", gap: space(2) }}>
+            <View style={{ flex: 1 }}>
+              <Field autoCapitalize="none" keyboardType="numbers-and-punctuation" label="Latitude" onChangeText={setManualLat} placeholder="12.9716" value={manualLat} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Field autoCapitalize="none" keyboardType="numbers-and-punctuation" label="Longitude" onChangeText={setManualLng} placeholder="77.5946" value={manualLng} />
+            </View>
+          </View>
+          <Button disabled={!manualLat || !manualLng} kind="secondary" label="Use these coordinates" onPress={applyManual} small />
+        </Blueprint>
+      </View>
+
+      {coords ? (
+        <Blueprint style={{ backgroundColor: colors.accent100 }}>
+          <Text style={{ fontFamily: fonts.heading, fontSize: 16, color: colors.text }}>Pinned</Text>
+          <Text style={{ fontFamily: fonts.body, fontSize: 13, color: colors.neutral700, marginTop: 2 }}>
+            {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}
+            {coords.accuracy != null ? ` · ±${Math.round(coords.accuracy)} m` : ""} · {coords.source === "BROWSER_GPS" ? "from your phone" : "typed"}
+          </Text>
+          <Pressable onPress={() => setConfirmed((value) => !value)} style={{ flexDirection: "row", alignItems: "center", gap: space(2), marginTop: space(3) }}>
+            <View
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 6,
+                borderWidth: 1.5,
+                borderColor: confirmed ? colors.accent : colors.neutral500,
+                backgroundColor: confirmed ? colors.accent : "transparent",
+                alignItems: "center",
+                justifyContent: "center"
+              }}
+            >
+              {confirmed ? <Text style={{ color: "#FFFFFF", fontSize: 14, fontFamily: fonts.bodyBold }}>✓</Text> : null}
+            </View>
+            <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.text, flex: 1 }}>This is my shop's front door</Text>
+          </Pressable>
+        </Blueprint>
+      ) : null}
+
+      <Pressable onPress={() => setShowAddress((value) => !value)} style={{ paddingVertical: space(2) }}>
+        <Text style={{ color: colors.accent700, fontFamily: fonts.bodyMedium, fontSize: 14 }}>
+          {showAddress ? "Hide address" : "Add address details (optional)"}
+        </Text>
+      </Pressable>
+      {showAddress ? (
+        <>
+          <Field label="Address line" onChangeText={setAddressLine1} value={addressLine1} />
+          <View style={{ flexDirection: "row", gap: space(2) }}>
+            <View style={{ flex: 1 }}>
+              <Field label="City" onChangeText={setCity} value={city} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Field autoCapitalize="none" label="Postcode" onChangeText={setPostalCode} value={postalCode} />
+            </View>
+          </View>
+        </>
+      ) : null}
+
+      {error ? (
+        <View style={{ marginBottom: space(3) }}>
+          <Note tone="danger">{error}</Note>
+        </View>
+      ) : null}
+      <Button disabled={!coords || !confirmed} label="Submit for approval" loading={busy} onPress={() => void submit()} />
+      <View style={{ marginTop: space(2) }}>
+        <Note center tone="faint">
+          No card, no contract. You'll sign in with your email and password once approved.
+        </Note>
+      </View>
+    </Screen>
+  );
+}
