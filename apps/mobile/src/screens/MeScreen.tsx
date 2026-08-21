@@ -1,5 +1,7 @@
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as Google from "expo-auth-session/providers/google";
+
+import { GOOGLE_CLIENT_IDS } from "../config";
 import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useState } from "react";
@@ -88,7 +90,8 @@ export function MeScreen({ onOpenShop }: { onOpenShop: (slug: string) => void })
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const googleIds = ((Constants.expoConfig?.extra as { googleClientIds?: GoogleIds } | undefined)?.googleClientIds ?? {}) as GoogleIds;
+  const embeddedIds = ((Constants.expoConfig?.extra as { googleClientIds?: GoogleIds } | undefined)?.googleClientIds ?? {}) as GoogleIds;
+  const googleIds: GoogleIds = { ...embeddedIds, ...GOOGLE_CLIENT_IDS };
   const googleConfigured =
     Platform.OS === "ios" ? Boolean(googleIds.iosClientId) : Platform.OS === "android" ? Boolean(googleIds.androidClientId) : Boolean(googleIds.webClientId);
 
