@@ -7,7 +7,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Alert, Image, Linking, Modal, Platform, Pressable, Text, View } from "react-native";
 
 import { api, type ShopSummary, type VisitHistoryItem } from "../api";
-import { GOOGLE_CLIENT_IDS, WEB_BASE_URL } from "../config";
+import { GOOGLE_CLIENT_IDS } from "../config";
+import { LegalScreen, type LegalDoc } from "./LegalScreen";
 import { Storefront } from "../scenery";
 import { useStore } from "../store";
 import { colors, fonts, radius, shadowCard, shadowSoft, space } from "../theme";
@@ -226,14 +227,14 @@ function FavouritesSection({ deviceKey, onOpenShop }: { deviceKey: string | null
   );
 }
 
-function Footer() {
+function Footer({ onOpenLegal }: { onOpenLegal: (doc: LegalDoc) => void }) {
   return (
     <View style={{ alignItems: "center", gap: 4, marginTop: space(6) }}>
       <View style={{ flexDirection: "row", gap: space(4) }}>
-        <Pressable onPress={() => void Linking.openURL(`${WEB_BASE_URL}/privacy`)}>
+        <Pressable onPress={() => onOpenLegal("privacy")}>
           <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.accent700 }}>Privacy</Text>
         </Pressable>
-        <Pressable onPress={() => void Linking.openURL(`${WEB_BASE_URL}/terms`)}>
+        <Pressable onPress={() => onOpenLegal("terms")}>
           <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.accent700 }}>Terms</Text>
         </Pressable>
       </View>
@@ -252,6 +253,7 @@ export function MeScreen({ onOpenShop }: { onOpenShop: (slug: string) => void })
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
+  const [legal, setLegal] = useState<LegalDoc | null>(null);
 
   const embeddedIds = ((Constants.expoConfig?.extra as { googleClientIds?: GoogleIds } | undefined)?.googleClientIds ?? {}) as GoogleIds;
   const googleIds: GoogleIds = { ...embeddedIds, ...GOOGLE_CLIENT_IDS };
@@ -409,7 +411,8 @@ export function MeScreen({ onOpenShop }: { onOpenShop: (slug: string) => void })
 
         <View style={{ height: space(6) }} />
         <FavouritesSection deviceKey={deviceKey} onOpenShop={onOpenShop} />
-        <Footer />
+        <Footer onOpenLegal={setLegal} />
+        <LegalScreen doc={legal} onClose={() => setLegal(null)} />
       </Screen>
     );
   }
@@ -498,8 +501,8 @@ export function MeScreen({ onOpenShop }: { onOpenShop: (slug: string) => void })
       <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, overflow: "hidden", ...shadowSoft }}>
         <Row label="Edit name" onPress={() => { setDraftName(customerProfile.firstName); setEditing(true); }} value={customerProfile.firstName} />
         <Row label="Notifications" onPress={() => void Linking.openSettings()} value="System settings ›" />
-        <Row label="Privacy policy" onPress={() => void Linking.openURL(`${WEB_BASE_URL}/privacy`)} />
-        <Row label="Terms of use" onPress={() => void Linking.openURL(`${WEB_BASE_URL}/terms`)} />
+        <Row label="Privacy policy" onPress={() => setLegal("privacy")} />
+        <Row label="Terms of use" onPress={() => setLegal("terms")} />
         <Row label="Sign out" onPress={signOut} />
         <Row label="Delete account" last onPress={confirmDelete} tone="danger" value=" " />
       </View>
@@ -509,7 +512,8 @@ export function MeScreen({ onOpenShop }: { onOpenShop: (slug: string) => void })
           <Note tone="danger">{error}</Note>
         </View>
       ) : null}
-      <Footer />
+      <Footer onOpenLegal={setLegal} />
+      <LegalScreen doc={legal} onClose={() => setLegal(null)} />
 
       <Modal animationType="fade" onRequestClose={() => setEditing(false)} transparent visible={editing}>
         <Pressable onPress={() => setEditing(false)} style={{ flex: 1, backgroundColor: "rgba(16,24,40,0.45)", justifyContent: "center", padding: space(6) }}>
