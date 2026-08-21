@@ -39,7 +39,8 @@
     ],
     "scheme": [
       "onq",
-      "com.googleusercontent.apps.216837184187-q7v35ru832dnb9rqbcn051ef93lva51t"
+      "com.googleusercontent.apps.216837184187-q7v35ru832dnb9rqbcn051ef93lva51t",
+      "com.scotitech.qapp"
     ],
     "extra": {
       "googleClientIds": {
