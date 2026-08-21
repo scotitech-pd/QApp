@@ -36,6 +36,17 @@
         }
       ],
       "expo-web-browser"
-    ]
+    ],
+    "scheme": [
+      "onq",
+      "com.googleusercontent.apps.216837184187-q7v35ru832dnb9rqbcn051ef93lva51t"
+    ],
+    "extra": {
+      "googleClientIds": {
+        "iosClientId": "216837184187-q7v35ru832dnb9rqbcn051ef93lva51t.apps.googleusercontent.com",
+        "androidClientId": "216837184187-i2jvt542dcb2gh570an42ngc6n8sdj85.apps.googleusercontent.com",
+        "webClientId": ""
+      }
+    }
   }
 }
