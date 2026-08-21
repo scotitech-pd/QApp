@@ -181,8 +181,9 @@ export function validateBusinessSignupInput(payload: unknown) {
   return { ok: true as const, data: normalized };
 }
 
-function serializeSignup(signup: BusinessSignup) {
+function serializeSignup(signup: BusinessSignup & { approvedLocation?: { slug: string } | null }) {
   return {
+    approvedLocationSlug: signup.approvedLocation?.slug ?? null,
     id: signup.id,
     createdAt: signup.createdAt.toISOString(),
     updatedAt: signup.updatedAt.toISOString(),
@@ -247,7 +248,8 @@ export async function createBusinessSignupRecord(input: NormalizedBusinessSignup
 export async function listBusinessSignups(status?: ApprovalStatus) {
   const items = await prisma.businessSignup.findMany({
     where: status ? { approvalStatus: status } : undefined,
-    orderBy: { createdAt: "desc" }
+    orderBy: { createdAt: "desc" },
+    include: { approvedLocation: { select: { slug: true } } }
   });
 
   return items.map(serializeSignup);

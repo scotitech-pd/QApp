@@ -1507,3 +1507,89 @@ code.inline {
   font-size: 0.92rem;
   line-height: 1.45;
 }
+
+/* -------- super admin console -------- */
+
+.admin-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.admin-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.admin-tab-active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+.admin-tab-count {
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 0.78rem;
+}
+
+.admin-tab:not(.admin-tab-active) .admin-tab-count {
+  background: var(--bg-elevated);
+  color: var(--muted);
+}
+
+.admin-tabs .button { margin-left: auto; }
+
+.admin-facts {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.admin-facts div {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: var(--space-3);
+  font-size: 0.92rem;
+}
+
+.admin-facts dt {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding-top: 2px;
+}
+
+.admin-facts dd {
+  margin: 0;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.admin-actions,
+.admin-links {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.admin-reject {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}

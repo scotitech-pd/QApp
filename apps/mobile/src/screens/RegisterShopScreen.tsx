@@ -4,6 +4,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { api, type BusinessSignupPayload } from "../api";
 import { colors, fonts, radius, space } from "../theme";
+import { Select } from "../select";
 import { BackLink, Blueprint, Button, Field, Kicker, Note, Screen } from "../ui";
 
 const INDUSTRIES: Array<{ key: string; label: string }> = [
@@ -15,6 +16,38 @@ const INDUSTRIES: Array<{ key: string; label: string }> = [
 ];
 
 type Step = "details" | "location";
+
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+type Day = (typeof DAYS)[number];
+
+const CHAIR_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map((n) => ({ value: n, label: `${n} ${n === 1 ? "chair" : "chairs"}` }));
+
+function timeLabel(minutes: number) {
+  const h24 = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const suffix = h24 >= 12 ? "pm" : "am";
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${suffix}`;
+}
+
+const OPEN_OPTIONS = Array.from({ length: 13 }, (_, i) => 6 * 60 + i * 30).map((v) => ({ value: v, label: timeLabel(v) }));
+const CLOSE_OPTIONS = Array.from({ length: 17 }, (_, i) => 15 * 60 + i * 30).map((v) => ({ value: v, label: timeLabel(v) }));
+
+/** "Mon–Sat 9:00 am–8:00 pm, Sun closed" from structured picks. */
+function buildHoursNote(openDays: Set<Day>, opensAt: number, closesAt: number) {
+  const open = DAYS.filter((day) => openDays.has(day));
+  const closed = DAYS.filter((day) => !openDays.has(day));
+  const ranges: string[] = [];
+  let i = 0;
+  while (i < open.length) {
+    let j = i;
+    while (j + 1 < open.length && DAYS.indexOf(open[j + 1]) === DAYS.indexOf(open[j]) + 1) j += 1;
+    ranges.push(j > i + 1 ? `${open[i]}–${open[j]}` : j === i + 1 ? `${open[i]}, ${open[j]}` : open[i]);
+    i = j + 1;
+  }
+  const hours = `${ranges.join(", ")} ${timeLabel(opensAt)}–${timeLabel(closesAt)}`;
+  return closed.length ? `${hours}, ${closed.join(", ")} closed` : hours;
+}
 
 export function RegisterShopScreen({
   onBack,
@@ -36,8 +69,11 @@ export function RegisterShopScreen({
   const [password, setPassword] = useState(demo ? "DemoShop12345!" : "");
   const [passwordConfirm, setPasswordConfirm] = useState(demo ? "DemoShop12345!" : "");
   const [industryType, setIndustryType] = useState("BARBER");
-  const [chairs, setChairs] = useState("2");
-  const [openingHoursNote, setOpeningHoursNote] = useState(demo ? "Mon–Sat 9am–8pm, Sun closed" : "");
+  const [chairs, setChairs] = useState<number>(2);
+  const [openDays, setOpenDays] = useState<Set<Day>>(new Set(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]));
+  const [opensAt, setOpensAt] = useState<number>(9 * 60);
+  const [closesAt, setClosesAt] = useState<number>(20 * 60);
+  const openingHoursNote = openDays.size > 0 ? buildHoursNote(openDays, opensAt, closesAt) : "";
 
   const [coords, setCoords] = useState<{ latitude: number; longitude: number; accuracy: number | null; source: "BROWSER_GPS" | "MANUAL_PIN" } | null>(null);
   const [manualLat, setManualLat] = useState("");
@@ -55,8 +91,8 @@ export function RegisterShopScreen({
     if (mobileNumber.replace(/\D/g, "").length < 7) return "Enter a valid mobile number.";
     if (password.length < 10) return "Password needs at least 10 characters.";
     if (password !== passwordConfirm) return "Passwords don't match.";
-    if (!openingHoursNote.trim()) return "Add your opening hours (e.g. Mon–Sat 9am–8pm).";
-    if (!Number(chairs) || Number(chairs) < 1) return "How many chairs or stations do you run?";
+    if (openDays.size === 0) return "Pick at least one open day.";
+    if (closesAt <= opensAt) return "Closing time must be after opening time.";
     return null;
   }
 
@@ -108,7 +144,7 @@ export function RegisterShopScreen({
         email: email.trim().toLowerCase(),
         password,
         industryType,
-        serviceStationsCount: Number(chairs),
+        serviceStationsCount: chairs,
         openingHoursNote: openingHoursNote.trim(),
         latitude: coords.latitude,
         longitude: coords.longitude,
@@ -167,8 +203,52 @@ export function RegisterShopScreen({
           })}
         </View>
 
-        <Field keyboardType="number-pad" label="Chairs or stations" onChangeText={setChairs} value={chairs} />
-        <Field label="Opening hours" onChangeText={setOpeningHoursNote} placeholder="Mon–Sat 9am–8pm, Sun closed" value={openingHoursNote} />
+        <Select label="Chairs or stations" onChange={setChairs} options={CHAIR_OPTIONS} sheetTitle="How many chairs or stations?" value={chairs} />
+
+        <Text style={{ fontSize: 12, color: "rgba(29, 31, 32, 0.7)", fontFamily: fonts.bodyMedium, marginBottom: 6 }}>Open days</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(1.5), marginBottom: space(3) }}>
+          {DAYS.map((day) => {
+            const active = openDays.has(day);
+            return (
+              <Pressable
+                key={day}
+                onPress={() =>
+                  setOpenDays((current) => {
+                    const next = new Set(current);
+                    if (next.has(day)) next.delete(day);
+                    else next.add(day);
+                    return next;
+                  })
+                }
+                style={{
+                  width: 44,
+                  height: 40,
+                  borderRadius: radius.md,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: active ? colors.accent : colors.surface,
+                  borderWidth: 1,
+                  borderColor: active ? colors.accent : colors.dividerSoft
+                }}
+              >
+                <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 13, color: active ? "#FFFFFF" : colors.text }}>{day}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <View style={{ flexDirection: "row", gap: space(2) }}>
+          <View style={{ flex: 1 }}>
+            <Select label="Opens at" onChange={setOpensAt} options={OPEN_OPTIONS} value={opensAt} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Select label="Closes at" onChange={setClosesAt} options={CLOSE_OPTIONS} value={closesAt} />
+          </View>
+        </View>
+        {openingHoursNote ? (
+          <View style={{ marginBottom: space(3) }}>
+            <Note tone="faint">Customers will see: {openingHoursNote}</Note>
+          </View>
+        ) : null}
 
         {error ? (
           <View style={{ marginBottom: space(3) }}>

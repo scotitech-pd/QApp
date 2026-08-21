@@ -3,17 +3,16 @@ import { AdminBusinessSignups } from "./signups-client";
 export default function AdminBusinessSignupsPage() {
   return (
     <main className="page-shell">
-      <section className="hero hero-compact">
-        <span className="eyebrow">OnQ Admin</span>
-        <h1>Approve businesses only after the real signup data checks out.</h1>
-        <p>
-          This review screen now runs on the protected admin APIs and is designed for
-          quick location and quality checks on phones as well as desktop.
+      <section className="hero-compact">
+        <span className="eyebrow">OnQ Super Admin</span>
+        <h1>Shop registrations</h1>
+        <p className="status-text">
+          Every shop goes live only after a human checks the pin and the details. Approving creates the owner&apos;s login,
+          the live shop page, and its QR sign in one step.
         </p>
       </section>
 
       <section className="section">
-        <h2>Pending Signups</h2>
         <AdminBusinessSignups />
       </section>
     </main>
