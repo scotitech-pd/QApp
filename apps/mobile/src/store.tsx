@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-import type { SessionUser } from "./api";
+import type { CustomerProfile, SessionUser } from "./api";
 
 type StoreValue = {
   ready: boolean;
@@ -12,6 +12,9 @@ type StoreValue = {
   setSession: (accessToken: string | null, user: SessionUser | null) => void;
   opsShopSlug: string | null;
   setOpsShopSlug: (slug: string | null) => void;
+  customerToken: string | null;
+  customerProfile: CustomerProfile | null;
+  setCustomerSession: (token: string | null, profile: CustomerProfile | null) => void;
 };
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -20,7 +23,9 @@ const KEYS = {
   trackingToken: "qapp.trackingToken",
   accessToken: "qapp.accessToken",
   user: "qapp.user",
-  opsShopSlug: "qapp.opsShopSlug"
+  opsShopSlug: "qapp.opsShopSlug",
+  customerToken: "qapp.customerToken",
+  customerProfile: "qapp.customerProfile"
 };
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -29,20 +34,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [opsShopSlug, setOpsShopSlugState] = useState<string | null>(null);
+  const [customerToken, setCustomerToken] = useState<string | null>(null);
+  const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const [storedTracking, storedAccess, storedUser, storedSlug] = await Promise.all([
-          AsyncStorage.getItem(KEYS.trackingToken),
-          AsyncStorage.getItem(KEYS.accessToken),
-          AsyncStorage.getItem(KEYS.user),
-          AsyncStorage.getItem(KEYS.opsShopSlug)
-        ]);
+        const [storedTracking, storedAccess, storedUser, storedSlug, storedCustomerToken, storedCustomerProfile] =
+          await Promise.all([
+            AsyncStorage.getItem(KEYS.trackingToken),
+            AsyncStorage.getItem(KEYS.accessToken),
+            AsyncStorage.getItem(KEYS.user),
+            AsyncStorage.getItem(KEYS.opsShopSlug),
+            AsyncStorage.getItem(KEYS.customerToken),
+            AsyncStorage.getItem(KEYS.customerProfile)
+          ]);
         if (storedTracking) setTrackingTokenState(storedTracking);
         if (storedAccess) setAccessToken(storedAccess);
         if (storedUser) setUser(JSON.parse(storedUser));
         if (storedSlug) setOpsShopSlugState(storedSlug);
+        if (storedCustomerToken) setCustomerToken(storedCustomerToken);
+        if (storedCustomerProfile) setCustomerProfile(JSON.parse(storedCustomerProfile));
       } catch {
         // first launch or corrupted storage: start clean
       } finally {
@@ -75,9 +87,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setOpsShopSlugState(slug);
         if (slug) void AsyncStorage.setItem(KEYS.opsShopSlug, slug);
         else void AsyncStorage.removeItem(KEYS.opsShopSlug);
+      },
+      customerToken,
+      customerProfile,
+      setCustomerSession: (nextToken, nextProfile) => {
+        setCustomerToken(nextToken);
+        setCustomerProfile(nextProfile);
+        if (nextToken) void AsyncStorage.setItem(KEYS.customerToken, nextToken);
+        else void AsyncStorage.removeItem(KEYS.customerToken);
+        if (nextProfile) void AsyncStorage.setItem(KEYS.customerProfile, JSON.stringify(nextProfile));
+        else void AsyncStorage.removeItem(KEYS.customerProfile);
       }
     }),
-    [ready, trackingToken, accessToken, user, opsShopSlug]
+    [ready, trackingToken, accessToken, user, opsShopSlug, customerToken, customerProfile]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

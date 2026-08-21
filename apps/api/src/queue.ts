@@ -250,7 +250,7 @@ export async function startQueueJoin(input: QueueJoinStartInput) {
     challengeId: challenge.id,
     expiresAt: challenge.expiresAt.toISOString(),
     message:
-      smsResult.deliveryMode === "twilio"
+      smsResult.deliveryMode !== "preview"
         ? "Verification code sent by SMS."
         : "Verification code created. SMS is currently using preview mode.",
     deliveryMode: smsResult.deliveryMode,

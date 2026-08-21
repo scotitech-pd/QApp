@@ -195,6 +195,26 @@ export type ShopCustomerRecord = {
   lastVisitAt: string | null;
 };
 
+export type CustomerProfile = {
+  id: string;
+  firstName: string;
+  email: string | null;
+  phone: string | null;
+  providers: string[];
+};
+
+export type VisitHistoryItem = {
+  id: string;
+  shopName: string;
+  shopSlug: string;
+  city: string | null;
+  status: string;
+  source: string;
+  joinedAt: string;
+  completedAt: string | null;
+  rating: number | null;
+};
+
 // ---------- Customer endpoints ----------
 
 export const api = {
@@ -293,7 +313,24 @@ export const api = {
       body: { durationDeltaMin: 10, label: "+10 min" },
       token
     }),
+  opsReorder: (token: string, slug: string, trackingTokens: string[]) =>
+    request<OpsDashboard>(`/ops/shops/${slug}/queue/reorder`, { method: "POST", body: { trackingTokens }, token }),
   opsInsights: (token: string, slug: string) => request<ShopInsights>(`/ops/shops/${slug}/insights`, { token }),
   opsCustomers: (token: string, slug: string) =>
     request<ShopCustomerRecord[]>(`/ops/shops/${slug}/customers`, { token })
+,
+
+  // ---------- Customer accounts (optional sign-in) ----------
+
+  customerAuthApple: (identityToken: string, firstName?: string | null) =>
+    request<{ token: string; profile: CustomerProfile }>("/customer/auth/apple", {
+      method: "POST",
+      body: { identityToken, ...(firstName ? { firstName } : {}) }
+    }),
+  customerAuthGoogle: (idToken: string) =>
+    request<{ token: string; profile: CustomerProfile }>("/customer/auth/google", { method: "POST", body: { idToken } }),
+  customerMe: (token: string) => request<CustomerProfile>("/customer/me", { token }),
+  customerHistory: (token: string) => request<VisitHistoryItem[]>("/customer/me/history", { token }),
+  customerClaim: (token: string, trackingToken: string) =>
+    request<CustomerProfile>("/customer/me/claim", { method: "POST", body: { trackingToken }, token })
 };

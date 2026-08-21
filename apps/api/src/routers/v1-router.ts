@@ -3,6 +3,7 @@ import { Router } from "express";
 import { createAdminSecurityRouter } from "./admin-security-router";
 import { createAuthRouter } from "./auth-router";
 import { createBusinessSignupsRouter } from "./business-signups-router";
+import { createCustomerRouter } from "./customer-router";
 import { createInvitationsRouter } from "./invitations-router";
 import { createOperationsRouter } from "./operations-router";
 import { createPreferencesRouter } from "./preferences-router";
@@ -19,6 +20,7 @@ export function createV1Router() {
   router.use(createShopsRouter());
   router.use(createPreferencesRouter());
   router.use(createQueueRouter());
+  router.use(createCustomerRouter());
   router.use(createOperationsRouter());
 
   return router;

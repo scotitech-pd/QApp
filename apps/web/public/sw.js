@@ -61,3 +61,37 @@ function offlineFallback(request) {
   }
   return Response.error();
 }
+
+// ---- Web Push: turn alerts for the no-app QR path ----
+self.addEventListener("push", (event) => {
+  let payload = { title: "OnQ", body: "Your queue has an update.", data: {} };
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch {
+    // keep defaults
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      vibrate: [250, 120, 250, 120, 400],
+      tag: "onq-turn",
+      renotify: true,
+      data: payload.data
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const token = event.notification.data && event.notification.data.trackingToken;
+  const target = token ? `/queue/${token}` : "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find((client) => client.url.includes(target));
+      if (existing) return existing.focus();
+      return self.clients.openWindow(target);
+    })
+  );
+});

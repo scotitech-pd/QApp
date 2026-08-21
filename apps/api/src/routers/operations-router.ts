@@ -12,6 +12,8 @@ import {
   getQueueDashboard,
   getShopInsights,
   listShopCustomers,
+  reorderQueue,
+  validateReorderInput,
   getShopProfile,
   pauseQueue,
   releaseQueueNoShow,
@@ -171,6 +173,21 @@ export function createOperationsRouter() {
       }
 
       const item = await extendService(getPathParam(req.params.slug), getPathParam(req.params.visitId), parsed.data);
+      sendItem(res, item);
+    })
+  );
+
+  router.post(
+    "/ops/shops/:slug/queue/reorder",
+    ...requireOpsAccess,
+    asyncHandler(async (req, res) => {
+      const parsed = validateReorderInput(req.body);
+
+      if (!parsed.ok) {
+        throw ApiError.badRequest(parsed.error);
+      }
+
+      const item = await reorderQueue(getPathParam(req.params.slug), parsed.data.trackingTokens);
       sendItem(res, item);
     })
   );

@@ -4,10 +4,12 @@ import { BarlowCondensed_400Regular, BarlowCondensed_600SemiBold } from "@expo-g
 import { useFonts } from "expo-font";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import { MeScreen } from "./src/screens/MeScreen";
 import { NearbyScreen } from "./src/screens/NearbyScreen";
 import { QueueScreen } from "./src/screens/QueueScreen";
 import { ShopDetailScreen } from "./src/screens/ShopDetailScreen";
@@ -16,24 +18,45 @@ import { ShopPortalScreen } from "./src/screens/ShopPortalScreen";
 import { StoreProvider, useStore } from "./src/store";
 import { colors, fonts, shadowFloat, space } from "./src/theme";
 
-type Tab = "salons" | "queue" | "shop";
+type Tab = "salons" | "queue" | "me" | "shop";
 
 const TABS: Array<{ key: Tab; label: string; glyph: string }> = [
   { key: "salons", label: "Salons", glyph: "◎" },
   { key: "queue", label: "My Queue", glyph: "◷" },
+  { key: "me", label: "Me", glyph: "◍" },
   { key: "shop", label: "Shop", glyph: "▦" }
 ];
+
+/** https://<domain>/shops/<slug>, onq://shops/<slug>, or Expo dev URLs → shop slug. */
+function shopSlugFromUrl(url: string | null) {
+  if (!url) return null;
+  const match = url.match(/\/shops\/([a-z0-9-]+)/i);
+  return match ? match[1].toLowerCase() : null;
+}
 
 function Shell() {
   const { ready, setTrackingToken } = useStore();
   const [tab, setTab] = useState<Tab>("salons");
   const [shopNav, setShopNav] = useState<{ slug: string; mode: "join" | "info" } | null>(null);
 
+  useEffect(() => {
+    const handle = (url: string | null) => {
+      const slug = shopSlugFromUrl(url);
+      if (slug) {
+        setTab("salons");
+        setShopNav({ slug, mode: "info" });
+      }
+    };
+    Linking.getInitialURL().then(handle).catch(() => undefined);
+    const sub = Linking.addEventListener("url", (event) => handle(event.url));
+    return () => sub.remove();
+  }, []);
+
   if (!ready) return <View style={styles.root} />;
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={styles.body}>
+      <SafeAreaView edges={["top", "left", "right"]} style={styles.body}>
         {tab === "salons" ? (
           shopNav?.mode === "join" ? (
             <ShopDetailScreen
@@ -60,10 +83,18 @@ function Shell() {
           )
         ) : null}
         {tab === "queue" ? <QueueScreen onFindSalon={() => setTab("salons")} /> : null}
+        {tab === "me" ? (
+          <MeScreen
+            onOpenShop={(slug) => {
+              setTab("salons");
+              setShopNav({ slug, mode: "info" });
+            }}
+          />
+        ) : null}
         {tab === "shop" ? <ShopPortalScreen /> : null}
       </SafeAreaView>
 
-      <SafeAreaView style={styles.tabBarSafe}>
+      <SafeAreaView edges={["bottom"]} style={styles.tabBarSafe}>
         <View style={styles.tabBar}>
           {TABS.map((item) => {
             const active = tab === item.key;
@@ -112,12 +143,14 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
       <BottomSheetModalProvider>
         <StoreProvider>
           <StatusBar style="dark" />
           <Shell />
         </StoreProvider>
       </BottomSheetModalProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

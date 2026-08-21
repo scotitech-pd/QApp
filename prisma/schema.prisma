@@ -565,6 +565,9 @@ model Customer {
   firstName              String
   phone                  String?                 @unique
   email                  String?
+  appleUserId            String?                 @unique
+  googleUserId           String?                 @unique
+  lastSignInAt           DateTime?
   phoneVerifiedAt        DateTime?
   marketingOptInAt       DateTime?
   visits                 Visit[]
@@ -685,6 +688,7 @@ model QueueEntry {
   createdAt                DateTime              @default(now())
   updatedAt                DateTime              @updatedAt
   pushToken                String?
+  webPushSubscription      Json?
   trackingToken            String                @unique
   sortIndex                Int
   joinedAt                 DateTime              @default(now())

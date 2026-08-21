@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { LiveWaitTimer } from "../../components/live-wait-timer";
 import { requestJson, unwrapItem } from "../../lib/api";
 import { getSocket } from "../../lib/socket";
+import { subscribeToTurnAlerts } from "../../lib/web-push";
 
 type QueueStatus = {
   trackingToken: string;
@@ -212,6 +213,7 @@ export function QueueStatusClient({ trackingToken }: { trackingToken: string }) 
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [alertsPrimed, setAlertsPrimed] = useState(false);
+  const [pushReady, setPushReady] = useState(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const alertActiveRef = useRef(false);
   const titleFlashRef = useRef<number | null>(null);
@@ -227,6 +229,8 @@ export function QueueStatusClient({ trackingToken }: { trackingToken: string }) 
     } catch {
       setAlertsPrimed(true);
     }
+    // Same user gesture unlocks browser push, so the alert reaches a locked phone too.
+    void subscribeToTurnAlerts(trackingToken).then(setPushReady);
   }
 
   function playChime() {
@@ -464,10 +468,12 @@ export function QueueStatusClient({ trackingToken }: { trackingToken: string }) 
         {isWaitingForTurn && !awaitingArrivalResponse ? (
           <div className="keep-open-banner">
             <span>
-              Keep this page open — it buzzes and chimes here when it&apos;s nearly your turn.
+              {pushReady
+                ? "Alerts on — we'll notify this phone even if you close the page."
+                : "Keep this page open — it buzzes and chimes here when it's nearly your turn."}
             </span>
             <button className="button small" onClick={primeAlerts} type="button">
-              {alertsPrimed ? "Sound on ✓" : "🔔 Test alert"}
+              {pushReady ? "Alerts on ✓" : alertsPrimed ? "Sound on ✓" : "🔔 Turn on alerts"}
             </button>
           </div>
         ) : null}

@@ -9,6 +9,7 @@ import {
 import { ApiError } from "./core/api-error";
 import { prisma } from "./prisma";
 import { sendQueuePush } from "./push";
+import { sendWebPush } from "./webpush";
 import { emitQueueStatusUpdated, emitShopQueueUpdated } from "./realtime";
 import { loadRecentReviews, loadReviewSummary } from "./reviews";
 import {
@@ -498,6 +499,12 @@ export async function callNextCustomer(slug: string, trackingToken: string) {
 
   await sendQueuePush(
     result.pushToken,
+    "It's your turn!",
+    `${location.name} is ready for you — head in.`,
+    { trackingToken: queueEntry.trackingToken, kind: "called" }
+  );
+  await sendWebPush(
+    result.webPushSubscription,
     "It's your turn!",
     `${location.name} is ready for you — head in.`,
     { trackingToken: queueEntry.trackingToken, kind: "called" }
@@ -1474,4 +1481,67 @@ export async function listShopCustomers(slug: string) {
       lastVisitAt: group._max?.completedAt?.toISOString() ?? null
     };
   });
+}
+
+// ---------- Queue reorder (staff drags/moves waiting customers) ----------
+
+export function validateReorderInput(payload: unknown) {
+  const tokens = (payload as Record<string, unknown> | undefined)?.trackingTokens;
+  if (!Array.isArray(tokens) || tokens.length === 0 || !tokens.every((t) => typeof t === "string" && t.length > 0)) {
+    return { ok: false as const, error: "trackingTokens must be a non-empty array of strings." };
+  }
+  return { ok: true as const, data: { trackingTokens: tokens as string[] } };
+}
+
+export async function reorderQueue(slug: string, trackingTokens: string[]) {
+  const location = await findLocationBySlug(slug);
+
+  if (!location) {
+    throw ApiError.notFound("Shop not found.");
+  }
+
+  const activeEntries = await prisma.queueEntry.findMany({
+    where: {
+      businessLocationId: location.id,
+      removedAt: null,
+      releasedAt: null,
+      missedAt: null,
+      visit: { status: { in: [VisitStatus.QUEUED, VisitStatus.CONFIRMATION_PENDING, VisitStatus.CALLED, VisitStatus.READY] } }
+    },
+    orderBy: { sortIndex: "asc" },
+    select: { id: true, trackingToken: true, sortIndex: true }
+  });
+
+  const byToken = new Map(activeEntries.map((entry) => [entry.trackingToken, entry]));
+  const requested = trackingTokens.filter((token) => byToken.has(token));
+  if (requested.length === 0) {
+    throw ApiError.badRequest("None of the given customers are waiting in this queue.");
+  }
+
+  // Requested order first, then everyone else in their existing order.
+  const ordered = [
+    ...requested.map((token) => byToken.get(token)!),
+    ...activeEntries.filter((entry) => !requested.includes(entry.trackingToken))
+  ];
+
+  await prisma.$transaction(async (tx) => {
+    const base = Math.min(...activeEntries.map((entry) => entry.sortIndex));
+    for (const [index, entry] of ordered.entries()) {
+      await tx.queueEntry.update({ where: { id: entry.id }, data: { sortIndex: base + index } });
+    }
+
+    await tx.operationalEvent.create({
+      data: {
+        businessLocationId: location.id,
+        type: OperationalEventType.QUEUE_REORDERED,
+        metadata: { action: "STAFF_REORDER", order: ordered.map((entry) => entry.trackingToken) }
+      }
+    });
+
+    await recalculateLocationQueueEstimates(tx, location.id);
+  });
+
+  await emitLocationQueueRefresh(location);
+
+  return getQueueDashboard(slug);
 }

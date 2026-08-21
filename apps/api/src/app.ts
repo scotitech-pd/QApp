@@ -6,6 +6,7 @@ import { sendItem } from "./core/http";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler";
 import { requestContext } from "./middleware/request-context";
 import { createV1Router } from "./routers/v1-router";
+import { webPushPublicKey } from "./webpush";
 
 export function createApp() {
   const app = express();
@@ -30,6 +31,7 @@ export function createApp() {
       version: "v1",
       purpose: "Mobile-first queue and scheduling backend",
       platformTargets: ["customer web", "barber portal", "future iOS app", "future Android app"],
+      webPushPublicKey: webPushPublicKey(),
       runtime: {
         apiBaseUrl: appConfig.apiBaseUrl,
         appBaseUrl: appConfig.appBaseUrl,

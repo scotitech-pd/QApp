@@ -71,17 +71,19 @@ Status: ✅ done · 🔄 in progress · ⬜ todo · Owner: F = Founder, C = Clau
 | S3.6 | Scope freeze: bugs only; ideas → backlog | 0 feature builds |
 | S3.7 | **G1 gate review Sep 28** | 4/4 criteria → Phase 2 |
 
-### Sprint 4 — Hosted + notifications (Oct, post-G1)
-| ID | Module | Item |
-|---|---|---|
-| S4.1 | Infra | Deploy API to founder's server (or Render), domain + HTTPS, repoint web/native/QRs |
-| S4.2 | Web | Web Push on tracking page (rung 3) — native app push (rung 3b) already shipped ✅ |
-| S4.3 | API | WhatsApp/SMS turn alerts (rung 4, D2 output) |
-| S4.4 | Owner | Queue reorder (drag or up/down) |
-| S4.5 | Mobile | Release APK + TestFlight via Scotitech account; Play internal ($25) |
-| S4.6 | Growth | Onboard shops 2–10, walkable radius |
-| S4.7 | Native | Android App Links / iOS Universal Links on the domain, so the OS camera opens the installed app directly from the same QR (no scanner needed) |
-| S4.8 | Native+API | Optional customer accounts: Sign in with Google + Apple to see visit history, favourite salons, faster rejoin (profile prefill). Queue joining stays account-free. Note: App Store rule — offering Google sign-in REQUIRES offering Sign in with Apple too. API: OAuth token verification endpoints + link customer records by verified phone. |
+### Sprint 4 — Hosted + notifications (built 2026-08-20; founder items marked)
+| ID | Module | Item | Status |
+|---|---|---|---|
+| S4.1 | Infra | Deploy API to founder's server (or Render), domain + HTTPS, repoint web/native/QRs | 🔄 founder — `render.yaml` ready; needs D1 + domain |
+| S4.2 | Web | Web Push on tracking page: VAPID keys, SW `push`/`notificationclick`, "Turn on alerts" subscribes + registers per queue entry; server fires on near-turn / are-you-coming / your-turn / missed | ✅ |
+| S4.3 | API | Notification providers: MSG91 SMS + WhatsApp Cloud API adapters (env-driven, WhatsApp tried first for alerts, SMS for OTP), Twilio kept, preview fallback | ✅ code — activation needs MSG91/WhatsApp credentials + DLT template (founder) |
+| S4.4 | Owner | Queue reorder: `POST /ops/shops/:slug/queue/reorder` + ↑/↓ on waiting rows in the owner app; recalculates ETAs and emits live updates | ✅ |
+| S4.5 | Mobile | Release APK (local gradle) + iOS project generated for archive; TestFlight upload = founder's App Store Connect session | 🔄 APK building; iOS archive/upload founder |
+| S4.6 | Growth | Onboard shops 2–10, walkable radius | founder |
+| S4.7 | Native | Universal/App Links: `/.well-known/apple-app-site-association` + `assetlinks.json` served from env; `app.config.js` adds associatedDomains + autoVerify intent filters; app opens `/shops/<slug>` from any link | ✅ prepped — activates with domain (S4.1) + release-keystore SHA-256 |
+| S4.8 | Native+API | Customer accounts: Sign in with Apple (server-verified via Apple JWKS) + Google (tokeninfo, needs client IDs); Me tab with visit history; claim merges the phone-based record into the account so history is complete; joining stays account-free | ✅ — Google activates with OAuth client IDs (founder) |
+
+Correction to an earlier note: walk-ins are already auto-confirmed by the lifecycle (no unanswerable "are you coming?"); the "On their way" tag on a walk-in is that auto-confirm.
 
 ## Stall guard spec (S2.3 output, build in Sprint 4)
 

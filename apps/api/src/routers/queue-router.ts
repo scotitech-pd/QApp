@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { isExpoPushToken } from "../push";
+import { isWebPushSubscription } from "../webpush";
 import { prisma } from "../prisma";
 
 import { ApiError } from "../core/api-error";
@@ -95,6 +96,29 @@ export function createQueueRouter() {
       }
 
       await prisma.queueEntry.update({ where: { id: entry.id }, data: { pushToken: token } });
+      sendItem(res, { registered: true });
+    })
+  );
+
+  router.post(
+    "/queue/status/:trackingToken/web-push",
+    asyncHandler(async (req, res) => {
+      const subscription = (req.body as Record<string, unknown> | undefined)?.subscription;
+
+      if (!isWebPushSubscription(subscription)) {
+        throw ApiError.badRequest("A valid Web Push subscription is required.");
+      }
+
+      const entry = await prisma.queueEntry.findUnique({
+        where: { trackingToken: getPathParam(req.params.trackingToken) },
+        select: { id: true }
+      });
+
+      if (!entry) {
+        throw ApiError.notFound("Queue status not found.");
+      }
+
+      await prisma.queueEntry.update({ where: { id: entry.id }, data: { webPushSubscription: subscription } });
       sendItem(res, { registered: true });
     })
   );

@@ -34,7 +34,8 @@
         {
           "cameraPermission": "OnQ uses the camera to scan a shop's QR code so you can join its queue."
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 }

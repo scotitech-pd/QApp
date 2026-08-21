@@ -29,6 +29,14 @@ function relativeDay(iso: string | null) {
   return weeks === 1 ? "1 week ago" : `${weeks} weeks ago`;
 }
 
+function moveToken(tokens: string[], index: number, delta: number) {
+  const next = [...tokens];
+  const target = index + delta;
+  if (target < 0 || target >= next.length) return next;
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+}
+
 function fmtClear(totalMins: number) {
   if (totalMins <= 0) return "0m";
   if (totalMins < 60) return `${totalMins}m`;
@@ -393,6 +401,26 @@ export function ShopPortalScreen() {
                       {maskPhone(entry.visit.customer.phone)}
                     </Text>
                   </View>
+                  {!called && waiting.length > 1 ? (
+                    <View style={{ flexDirection: "row", gap: 2, marginRight: space(1) }}>
+                      <Pressable
+                        disabled={index === 0 || busy}
+                        hitSlop={6}
+                        onPress={() => void act(() => api.opsReorder(accessToken, slug, moveToken(waiting.map((w) => w.trackingToken), index, -1)))}
+                        style={{ width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceAlt, opacity: index === 0 ? 0.35 : 1 }}
+                      >
+                        <Text style={{ color: colors.accent700, fontSize: 14, fontFamily: fonts.bodyBold }}>↑</Text>
+                      </Pressable>
+                      <Pressable
+                        disabled={index === waiting.length - 1 || busy}
+                        hitSlop={6}
+                        onPress={() => void act(() => api.opsReorder(accessToken, slug, moveToken(waiting.map((w) => w.trackingToken), index, 1)))}
+                        style={{ width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceAlt, opacity: index === waiting.length - 1 ? 0.35 : 1 }}
+                      >
+                        <Text style={{ color: colors.accent700, fontSize: 14, fontFamily: fonts.bodyBold }}>↓</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
                   {called ? (
                     <Button kind="ghost" label="No-show" onPress={() => void act(() => api.opsReleaseNoShow(accessToken, slug, entry.trackingToken))} small />
                   ) : index > 0 ? (

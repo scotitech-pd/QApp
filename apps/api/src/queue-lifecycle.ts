@@ -10,6 +10,7 @@ import {
 
 import { prisma } from "./prisma";
 import { sendQueuePush } from "./push";
+import { sendWebPush } from "./webpush";
 import { emitQueueStatusUpdated, emitShopQueueUpdated } from "./realtime";
 import { sendQueueAlertSms } from "./sms";
 
@@ -145,7 +146,7 @@ export async function processQueueLifecycle(businessLocationId: string) {
     notificationId: string;
     to: string;
     message: string;
-    push?: { token: string; title: string; body: string; data?: Record<string, unknown> };
+    push?: { token: string | null; webPush: unknown; title: string; body: string; data?: Record<string, unknown> };
   }> = [];
 
   await prisma.$transaction(async (tx) => {
@@ -229,9 +230,10 @@ export async function processQueueLifecycle(businessLocationId: string) {
           message: `We released your place at ${location.name} because we did not hear back. Rejoin here: ${buildShopLink(
             location.slug
           )}`,
-          push: entry.pushToken
+          push: entry.pushToken || entry.webPushSubscription
             ? {
                 token: entry.pushToken,
+                webPush: entry.webPushSubscription,
                 title: "You missed your turn",
                 body: `Your place at ${location.name} was released. Rejoin any time.`,
                 data: { trackingToken: entry.trackingToken, kind: "missed" }
@@ -342,9 +344,10 @@ export async function processQueueLifecycle(businessLocationId: string) {
           message: `You are getting close at ${location.name}. About ${eta} min left. Track your queue here: ${buildQueueLink(
             entry.trackingToken
           )}`,
-          push: entry.pushToken
+          push: entry.pushToken || entry.webPushSubscription
             ? {
                 token: entry.pushToken,
+                webPush: entry.webPushSubscription,
                 title: `Almost your turn at ${location.name}`,
                 body: `You're #${index + 1} — about ${eta} min. Start heading over.`,
                 data: { trackingToken: entry.trackingToken, kind: "near-turn" }
@@ -472,9 +475,10 @@ export async function processQueueLifecycle(businessLocationId: string) {
           message: `It is nearly your turn at ${location.name}. Tell us if you are coming: ${buildQueueLink(
             frontEntry.trackingToken
           )}`,
-          push: frontEntry.pushToken
+          push: frontEntry.pushToken || frontEntry.webPushSubscription
             ? {
                 token: frontEntry.pushToken,
+                webPush: frontEntry.webPushSubscription,
                 title: "Are you coming?",
                 body: `${location.name} is nearly ready for you. Confirm within ${location.calledGracePeriodMin} min.`,
                 data: { trackingToken: frontEntry.trackingToken, kind: "arrival-confirmation" }
@@ -494,6 +498,7 @@ export async function processQueueLifecycle(businessLocationId: string) {
       await markNotificationDelivery(notification.notificationId, result);
       if (notification.push) {
         await sendQueuePush(notification.push.token, notification.push.title, notification.push.body, notification.push.data);
+        await sendWebPush(notification.push.webPush, notification.push.title, notification.push.body, notification.push.data);
       }
     })
   );
