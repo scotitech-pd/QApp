@@ -3,6 +3,7 @@ import { Barlow_400Regular, Barlow_500Medium, Barlow_700Bold } from "@expo-googl
 import { BarlowCondensed_400Regular, BarlowCondensed_600SemiBold } from "@expo-google-fonts/barlow-condensed";
 import { useFonts } from "expo-font";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { LogBox } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
@@ -28,6 +29,8 @@ const TABS: Array<{ key: Tab; label: string; glyph: string }> = [
 ];
 
 /** https://<domain>/shops/<slug>, onq://shops/<slug>, or Expo dev URLs → shop slug. */
+LogBox.ignoreAllLogs(true);
+
 function shopSlugFromUrl(url: string | null) {
   if (!url) return null;
   const match = url.match(/\/shops\/([a-z0-9-]+)/i);

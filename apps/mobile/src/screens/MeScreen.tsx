@@ -277,14 +277,22 @@ export function MeScreen({ onOpenShop }: { onOpenShop: (slug: string) => void })
   }, [customerToken, setCustomerSession]);
 
   useEffect(() => {
-    setHistory(null);
-    if (!customerToken) return;
+    if (!customerToken) {
+      setHistory(null);
+      return;
+    }
+    let active = true;
     void (async () => {
       if (trackingToken) await api.customerClaim(customerToken, trackingToken).catch(() => undefined);
       if (deviceKey) await api.customerLinkDevice(customerToken, deviceKey).catch(() => undefined);
-      await refreshProfile();
+      if (active) await refreshProfile();
     })();
-  }, [customerToken, trackingToken, deviceKey, refreshProfile]);
+    return () => {
+      active = false;
+    };
+    // refreshProfile is stable (store setters are stable); exclude to avoid re-runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerToken, trackingToken, deviceKey]);
 
   const handleGoogleIdToken = useCallback(
     (idToken: string) => {
