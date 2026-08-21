@@ -33,9 +33,10 @@ src = src.replace(
         debug {`
 );
 
+// The release buildType in Expo's template is the one preceded by this comment.
 src = src.replace(
-  /(release \{\n(?:.*\n)*?)\s*signingConfig signingConfigs\.debug\n/,
-  (match) => match.replace("signingConfig signingConfigs.debug", "signingConfig onqReleaseSigning ? signingConfigs.release : signingConfigs.debug")
+  /(\/\/ see https:\/\/reactnative\.dev\/docs\/signed-apk-android\.\n\s*)signingConfig signingConfigs\.debug/,
+  "$1signingConfig onqReleaseSigning ? signingConfigs.release : signingConfigs.debug"
 );
 
 fs.writeFileSync(gradlePath, src);
