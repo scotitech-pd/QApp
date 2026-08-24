@@ -3,7 +3,7 @@ import * as Application from "expo-application";
 import * as Google from "expo-auth-session/providers/google";
 import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Image, Linking, Modal, Platform, Pressable, Text, View } from "react-native";
 
 import { api, type ShopSummary, type VisitHistoryItem } from "../api";
@@ -17,6 +17,13 @@ import { Blueprint, Button, Field, Kicker, Loading, Note, Screen, Tag } from "..
 WebBrowser.maybeCompleteAuthSession();
 
 type GoogleIds = { iosClientId?: string; androidClientId?: string; webClientId?: string };
+
+/* Client IDs are build-time constants. Kept at module scope so their object
+ * identity is stable: rebuilding them every render re-created the auth request
+ * inside useIdTokenAuthRequest, which set state, which re-rendered — the
+ * "Me tab flickering" loop. */
+const EMBEDDED_GOOGLE_IDS = ((Constants.expoConfig?.extra as { googleClientIds?: GoogleIds } | undefined)?.googleClientIds ?? {}) as GoogleIds;
+const GOOGLE_IDS: GoogleIds = { ...EMBEDDED_GOOGLE_IDS, ...GOOGLE_CLIENT_IDS };
 
 const APP_VERSION = Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? "dev";
 const APP_BUILD = Application.nativeBuildVersion ?? "—";
@@ -135,11 +142,11 @@ function GoogleButton({
   onIdToken: (idToken: string) => void;
   onError: (message: string) => void;
 }) {
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    iosClientId: ids.iosClientId,
-    androidClientId: ids.androidClientId,
-    webClientId: ids.webClientId
-  });
+  const authConfig = useMemo(
+    () => ({ iosClientId: ids.iosClientId, androidClientId: ids.androidClientId, webClientId: ids.webClientId }),
+    [ids.iosClientId, ids.androidClientId, ids.webClientId]
+  );
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest(authConfig);
 
   useEffect(() => {
     if (response?.type === "success" && response.params?.id_token) onIdToken(response.params.id_token);
@@ -255,10 +262,8 @@ export function MeScreen({ onOpenShop }: { onOpenShop: (slug: string) => void })
   const [draftName, setDraftName] = useState("");
   const [legal, setLegal] = useState<LegalDoc | null>(null);
 
-  const embeddedIds = ((Constants.expoConfig?.extra as { googleClientIds?: GoogleIds } | undefined)?.googleClientIds ?? {}) as GoogleIds;
-  const googleIds: GoogleIds = { ...embeddedIds, ...GOOGLE_CLIENT_IDS };
   const googleConfigured =
-    Platform.OS === "ios" ? Boolean(googleIds.iosClientId) : Platform.OS === "android" ? Boolean(googleIds.androidClientId) : Boolean(googleIds.webClientId);
+    Platform.OS === "ios" ? Boolean(GOOGLE_IDS.iosClientId) : Platform.OS === "android" ? Boolean(GOOGLE_IDS.androidClientId) : Boolean(GOOGLE_IDS.webClientId);
 
   useEffect(() => {
     if (Platform.OS === "ios") {
@@ -398,7 +403,7 @@ export function MeScreen({ onOpenShop }: { onOpenShop: (slug: string) => void })
           />
         ) : null}
         {googleConfigured ? (
-          <GoogleButton busy={busy} ids={googleIds} onError={setError} onIdToken={handleGoogleIdToken} />
+          <GoogleButton busy={busy} ids={GOOGLE_IDS} onError={setError} onIdToken={handleGoogleIdToken} />
         ) : (
           <Note center tone="faint">Google sign-in activates once OAuth client IDs are configured.</Note>
         )}

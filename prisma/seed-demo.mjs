@@ -290,14 +290,14 @@ async function seedDemoBusiness() {
       name: "Fade Yard",
       industryType: IndustryType.BARBER,
       approvalStatus: ApprovalStatus.APPROVED,
-      notes: "Reusable Q-App demo group"
+      notes: "Reusable OnQ demo group"
     },
     create: {
       slug: demoGroupSlug,
       name: "Fade Yard",
       industryType: IndustryType.BARBER,
       approvalStatus: ApprovalStatus.APPROVED,
-      notes: "Reusable Q-App demo group"
+      notes: "Reusable OnQ demo group"
     }
   });
 
@@ -310,7 +310,7 @@ async function seedDemoBusiness() {
       name: "Fade Yard Soho",
       status: LocationStatus.LIVE,
       isPublic: true,
-      publicDescription: "Live Q-App demo location with a real queue, smart arrival prompts, and operator workflow.",
+      publicDescription: "Live OnQ demo location with a real queue, smart arrival prompts, and operator workflow.",
       phone: "+447400000100",
       email: "soho@faydyard.demo",
       timezone: "Europe/London",
@@ -349,7 +349,7 @@ async function seedDemoBusiness() {
       name: "Fade Yard Soho",
       status: LocationStatus.LIVE,
       isPublic: true,
-      publicDescription: "Live Q-App demo location with a real queue, smart arrival prompts, and operator workflow.",
+      publicDescription: "Live OnQ demo location with a real queue, smart arrival prompts, and operator workflow.",
       phone: "+447400000100",
       email: "soho@faydyard.demo",
       timezone: "Europe/London",
@@ -739,14 +739,14 @@ async function seedExtraDemoLocations() {
         name: demo.groupName,
         industryType: demo.industryType,
         approvalStatus: ApprovalStatus.APPROVED,
-        notes: "Multi-industry Q-App discovery demo"
+        notes: "Multi-industry OnQ discovery demo"
       },
       create: {
         slug: demo.groupSlug,
         name: demo.groupName,
         industryType: demo.industryType,
         approvalStatus: ApprovalStatus.APPROVED,
-        notes: "Multi-industry Q-App discovery demo"
+        notes: "Multi-industry OnQ discovery demo"
       }
     });
 
@@ -759,7 +759,7 @@ async function seedExtraDemoLocations() {
         name: demo.name,
         status: LocationStatus.LIVE,
         isPublic: true,
-        publicDescription: `${demo.name} is live on Q-App with distance-aware discovery and a transparent queue.`,
+        publicDescription: `${demo.name} is live on OnQ with distance-aware discovery and a transparent queue.`,
         phone: "+447400000199",
         email: `${demo.slug}@qapp.demo`,
         timezone: "Europe/London",
@@ -799,7 +799,7 @@ async function seedExtraDemoLocations() {
         name: demo.name,
         status: LocationStatus.LIVE,
         isPublic: true,
-        publicDescription: `${demo.name} is live on Q-App with distance-aware discovery and a transparent queue.`,
+        publicDescription: `${demo.name} is live on OnQ with distance-aware discovery and a transparent queue.`,
         phone: "+447400000199",
         email: `${demo.slug}@qapp.demo`,
         timezone: "Europe/London",
@@ -966,7 +966,7 @@ async function main() {
   await seedExtraDemoLocations();
   await seedPendingSignup();
 
-  console.log("Q-App demo data seeded.");
+  console.log("OnQ demo data seeded.");
   console.log("Demo credentials:");
   console.log("  Platform admin: admin@qapp.demo / QappAdmin123!");
   console.log("  Owner: owner@fadeyard.demo / QappOwner123!");

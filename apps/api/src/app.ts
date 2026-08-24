@@ -5,6 +5,7 @@ import { appConfig } from "./core/config";
 import { sendItem } from "./core/http";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler";
 import { requestContext } from "./middleware/request-context";
+import { requestLog } from "./middleware/request-log";
 import { createV1Router } from "./routers/v1-router";
 import { webPushPublicKey } from "./webpush";
 
@@ -15,6 +16,7 @@ export function createApp() {
   app.use(cors());
   app.use(express.json({ limit: "1mb" }));
   app.use(requestContext);
+  app.use(requestLog);
 
   app.get("/health", (_req, res) => {
     sendItem(res, {
