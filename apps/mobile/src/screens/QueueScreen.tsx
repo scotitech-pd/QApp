@@ -201,7 +201,8 @@ export function QueueScreen({ onFindSalon }: { onFindSalon: () => void }) {
     if (!trackingToken) return;
     setBusy(true);
     try {
-      setStatus(await api.respondArrival(trackingToken, response));
+      await api.respondArrival(trackingToken, response);
+      await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send your answer.");
     } finally {
@@ -247,7 +248,9 @@ export function QueueScreen({ onFindSalon }: { onFindSalon: () => void }) {
     );
   }
 
-  if (!status) {
+  // A partial payload (e.g. an endpoint that returns only an ack) must never
+  // reach the renderer — treat it as "still loading" instead of crashing.
+  if (!status || !status.shop) {
     return <Screen title="My queue">{error ? <Note tone="danger">{error}</Note> : <Loading />}</Screen>;
   }
 

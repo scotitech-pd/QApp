@@ -271,8 +271,10 @@ export const api = {
       method: "POST",
       body: { token }
     }),
+  // Returns only { trackingToken, response } — callers must re-fetch queueStatus
+  // for the full record (shop, position, ETA).
   respondArrival: (trackingToken: string, response: "COMING" | "DECLINED") =>
-    request<QueueStatus>(`/queue/status/${trackingToken}/respond-arrival`, {
+    request<{ trackingToken: string; response: string }>(`/queue/status/${trackingToken}/respond-arrival`, {
       method: "POST",
       body: { response }
     }),
