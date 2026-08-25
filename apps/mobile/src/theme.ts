@@ -25,6 +25,13 @@ export const colors = {
   ink: "#1D1F20",
   ink2: "#424244",
   muted: "#7A7A7D",
+  // Amber: the brand's second colour. Reserved for "it's your turn / pay
+  // attention" moments and the rating stars, so the app's emotional peak is
+  // visually distinct from ordinary blue chrome. Matches the logo's hour hand.
+  amber: "#E6A84A",
+  amberDeep: "#B87C22",
+  amberSoft: "#FCEFDC",
+
   danger: "#A64848",
   dangerSoft: "#F6E4E4",
   success: "#4A7D5F",

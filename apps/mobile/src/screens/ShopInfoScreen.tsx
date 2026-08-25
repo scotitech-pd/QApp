@@ -10,7 +10,7 @@ import { BackLink, Blueprint, Button, Kicker, Loading, Note, Screen, Tag } from 
 
 function Stars({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
-    <Text style={{ fontSize: size, color: "#D99A3D", letterSpacing: 1 }}>
+    <Text style={{ fontSize: size, color: colors.amber, letterSpacing: 1 }}>
       {[1, 2, 3, 4, 5].map((step) => (rating >= step - 0.25 ? "★" : "☆")).join("")}
     </Text>
   );

@@ -16,12 +16,12 @@
     "start:api": "npm run start --workspace api",
     "seed:demo": "node prisma/seed-demo.mjs",
     "seed:real-shop": "node scripts/seed-real-shop.mjs",
-    "pwa:icons": "node scripts/generate-pwa-icons.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "contract:test:mobile": "node scripts/check-mobile-contract.mjs",
     "typecheck:web": "npm run typecheck --workspace web",
-    "typecheck:api": "npm run typecheck --workspace api"
+    "typecheck:api": "npm run typecheck --workspace api",
+    "brand:assets": "node scripts/generate-onq-brand.mjs"
   },
   "devDependencies": {
     "prisma": "^6.9.0",

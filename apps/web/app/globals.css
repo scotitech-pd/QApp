@@ -21,6 +21,12 @@
   --success-soft: #dcf1e5;
   --warn: #a76607;
   --warn-soft: #fdefd6;
+  /* Amber: brand's second colour — "your turn / attention" moments and stars.
+     Matches the OnQ logo's hour hand. */
+  --amber: #e6a84a;
+  --amber-deep: #b87c22;
+  --amber-soft: #fcefdc;
+
   --danger: #b53623;
   --danger-soft: #fadfd9;
   --border: rgba(20, 24, 31, 0.08);
@@ -1600,3 +1606,15 @@ code.inline {
 .legal-body { gap: var(--space-3); }
 .legal-body h2 { font-size: 1.15rem; margin-top: var(--space-4); }
 .legal-body p { color: var(--ink-2); line-height: 1.6; }
+
+
+/* -------- brand accent: attention moments -------- */
+
+.status-callout.turn {
+  background: var(--amber-soft);
+  color: var(--amber-deep);
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.rating-row { color: var(--amber); }

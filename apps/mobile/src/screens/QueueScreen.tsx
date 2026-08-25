@@ -19,7 +19,7 @@ function Stars({ onRate, rated }: { onRate: (n: number) => void; rated: number |
     <View style={{ flexDirection: "row", gap: space(2), justifyContent: "center", marginVertical: space(2) }}>
       {[1, 2, 3, 4, 5].map((n) => (
         <Pressable hitSlop={8} key={n} onPress={() => onRate(n)}>
-          <Text style={{ fontSize: 34, color: "#D99A3D" }}>{rated != null && n <= rated ? "★" : "☆"}</Text>
+          <Text style={{ fontSize: 34, color: colors.amber }}>{rated != null && n <= rated ? "★" : "☆"}</Text>
         </Pressable>
       ))}
     </View>
@@ -330,7 +330,7 @@ export function QueueScreen({ onFindSalon }: { onFindSalon: () => void }) {
       ) : null}
 
       {askConfirm ? (
-        <Blueprint style={{ gap: space(3), paddingVertical: space(6), backgroundColor: colors.accent100 }}>
+        <Blueprint style={{ gap: space(3), paddingVertical: space(6), backgroundColor: colors.amberSoft }}>
           <Text style={{ fontSize: 24, fontFamily: fonts.heading, color: colors.text, textAlign: "center" }}>
             It's nearly your turn. Are you coming?
           </Text>
@@ -346,7 +346,7 @@ export function QueueScreen({ onFindSalon }: { onFindSalon: () => void }) {
       ) : null}
 
       {(state === "CALLED" || state === "READY" || state === "CONFIRMATION_PENDING") && !askConfirm ? (
-        <Blueprint style={{ paddingVertical: space(6), alignItems: "center", gap: space(2), backgroundColor: colors.accent }}>
+        <Blueprint style={{ paddingVertical: space(6), alignItems: "center", gap: space(2), backgroundColor: colors.amber }}>
           <Storefront size={40} tint="#FFFFFF" />
           <Text style={{ fontSize: 26, fontFamily: fonts.heading, color: "#FFFFFF" }}>It's your turn</Text>
           <Text style={{ fontFamily: fonts.body, fontSize: 14, color: "rgba(255,255,255,0.9)", textAlign: "center" }}>
