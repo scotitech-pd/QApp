@@ -1,6 +1,7 @@
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Image,
   LayoutAnimation,
   Linking,
   Platform,
@@ -12,7 +13,7 @@ import {
 } from "react-native";
 import Svg, { Ellipse, Path } from "react-native-svg";
 
-import { StoneG, Storefront, TreeG } from "../scenery";
+import { FenceG, HayBaleG, SheepG, StoneG, Storefront, TractorG, TreeG } from "../scenery";
 import { useStore } from "../store";
 
 import { api, type ShopDetail, type ShopSummary } from "../api";
@@ -82,6 +83,29 @@ function hoursLines(openingHours: ShopDetail["openingHours"]): string[] {
  * half view; swiping up anywhere expands to 85% and the same gesture hands
  * off into content scrolling; pulling down from scroll-top collapses, then
  * dismisses. */
+function ShopLogo({
+  uri,
+  size,
+  radius: r,
+  fallbackTint
+}: {
+  uri?: string | null;
+  size: number;
+  radius: number;
+  fallbackTint: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (!uri || failed) return <Storefront size={size * 0.74} tint={fallbackTint} />;
+  return (
+    <Image
+      onError={() => setFailed(true)}
+      resizeMode="cover"
+      source={{ uri }}
+      style={{ width: size, height: size, borderRadius: r }}
+    />
+  );
+}
+
 function SheetHeart({ filled, size = 22 }: { filled: boolean; size?: number }) {
   return (
     <Svg fill={filled ? "#D9534F" : "none"} height={size} viewBox="0 0 24 24" width={size}>
@@ -168,8 +192,8 @@ function DetailSheet({
         showsVerticalScrollIndicator={expanded}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
-          <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: colors.accent100, alignItems: "center", justifyContent: "center" }}>
-            <Storefront size={28} tint={colors.accent700} />
+          <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: colors.accent100, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+            <ShopLogo fallbackTint={colors.accent700} radius={14} size={48} uri={shop.logoImageUrl} />
           </View>
           <View style={{ flex: 1 }}>
             <Text numberOfLines={1} style={{ fontFamily: fonts.heading, fontSize: 22, color: colors.text }}>
@@ -405,7 +429,7 @@ export function SalonPathView({
   const depthScale = (y: number) => Math.max(0.6, 1.15 - (y / Math.max(1, height)) * 0.55);
 
   let d = "";
-  const scenery: Array<{ kind: "tree" | "stone"; x: number; y: number; s: number }> = [];
+  const scenery: Array<{ kind: "tree" | "stone" | "hay" | "fence" | "sheep" | "tractor"; x: number; y: number; s: number }> = [];
   if (width > 0 && centers.length > 0) {
     const startX = 0.26 * width;
     let prevX = startX;
@@ -426,9 +450,16 @@ export function SalonPathView({
       const t1y = prevY + dy * 0.3;
       const t2x = (midX + x) / 2 + side * (52 + (1 - j) * 28);
       const t2y = prevY + dy * 0.72;
-      const clampX = (value: number) => Math.min(width - 18, Math.max(18, value));
-      scenery.push({ kind: j > 0.35 ? "tree" : "stone", x: clampX(t1x), y: t1y, s: depthScale(t1y) });
-      scenery.push({ kind: j > 0.7 ? "stone" : "tree", x: clampX(t2x), y: t2y, s: depthScale(t2y) * 0.85 });
+      const clampX = (value: number) => Math.min(width - 34, Math.max(34, value));
+      // Deterministic variety so the roadside feels lived-in but never reshuffles.
+      const leftKinds = ["tree", "fence", "hay", "tree", "sheep", "stone"] as const;
+      const rightKinds = ["stone", "tree", "sheep", "hay", "tree", "fence"] as const;
+      scenery.push({ kind: leftKinds[index % leftKinds.length], x: clampX(t1x), y: t1y, s: depthScale(t1y) });
+      scenery.push({ kind: rightKinds[(index + 2) % rightKinds.length], x: clampX(t2x), y: t2y, s: depthScale(t2y) * 0.85 });
+      // One tractor working the field, roughly a third of the way down.
+      if (index === Math.min(1, centers.length - 1)) {
+        scenery.push({ kind: "tractor", x: clampX(t2x + (j > 0.5 ? 30 : -30)), y: t2y + 26, s: depthScale(t2y) * 0.9 });
+      }
 
       prevX = x;
       prevY = cy;
@@ -487,7 +518,11 @@ export function SalonPathView({
       <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={{ height, position: "relative" }}>
         {width > 0 ? (
           <Svg height={height} pointerEvents="none" style={{ position: "absolute", inset: 0 }} width={width}>
-            <Path d={d} fill="none" stroke={colors.accent200} strokeDasharray="1 9" strokeLinecap="round" strokeWidth={3} />
+            {/* Country lane: earth base, soft edges, two faint cart ruts. */}
+            <Path d={d} fill="none" stroke="#C4A882" strokeLinecap="round" strokeOpacity={0.55} strokeWidth={26} />
+            <Path d={d} fill="none" stroke="#D9C29B" strokeLinecap="round" strokeWidth={20} />
+            <Path d={d} fill="none" stroke="#CBB086" strokeLinecap="round" strokeOpacity={0.75} strokeWidth={3} />
+            <Path d={d} fill="none" stroke="#C0A379" strokeDasharray="10 12" strokeLinecap="round" strokeOpacity={0.5} strokeWidth={2} />
             {centers.map(({ xFrac, cy }, index) => (
               <Ellipse
                 cx={xFrac * width}
@@ -498,13 +533,15 @@ export function SalonPathView({
                 ry={5}
               />
             ))}
-            {scenery.map((item, index) =>
-              item.kind === "tree" ? (
-                <TreeG key={`scenery-${index}`} s={item.s} x={item.x} y={item.y} />
-              ) : (
-                <StoneG key={`scenery-${index}`} s={item.s} x={item.x} y={item.y} />
-              )
-            )}
+            {scenery.map((item, index) => {
+              const k = `scenery-${index}`;
+              if (item.kind === "tree") return <TreeG key={k} s={item.s} x={item.x} y={item.y} />;
+              if (item.kind === "hay") return <HayBaleG key={k} s={item.s} x={item.x} y={item.y} />;
+              if (item.kind === "fence") return <FenceG key={k} s={item.s} x={item.x} y={item.y} />;
+              if (item.kind === "sheep") return <SheepG key={k} s={item.s} x={item.x} y={item.y} />;
+              if (item.kind === "tractor") return <TractorG key={k} s={item.s} x={item.x} y={item.y} />;
+              return <StoneG key={k} s={item.s} x={item.x} y={item.y} />;
+            })}
           </Svg>
         ) : null}
 
@@ -551,7 +588,12 @@ export function SalonPathView({
                   pressed && { transform: [{ scale: 0.92 }] }
                 ]}
               >
-                <Storefront size={size * 0.58} tint={first ? "#FFFFFF" : colors.accent600} />
+                <ShopLogo
+                  fallbackTint={first ? "#FFFFFF" : colors.accent600}
+                  radius={size * 0.22}
+                  size={size * 0.78}
+                  uri={shop.logoImageUrl}
+                />
               </Pressable>
               <Pressable
                 onPress={() => setSelected(shop)}

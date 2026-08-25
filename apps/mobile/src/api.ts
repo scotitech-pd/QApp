@@ -56,6 +56,8 @@ export type ShopSummary = {
   latitude: number | null;
   longitude: number | null;
   queuePaused: boolean;
+  logoImageUrl?: string | null;
+  coverImageUrl?: string | null;
   queueLength?: number;
   estimatedWaitMin?: number | null;
   distanceKm?: number | null;
