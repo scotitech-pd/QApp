@@ -13,6 +13,7 @@ import {
 import Svg, { Ellipse, Path } from "react-native-svg";
 
 import { StoneG, Storefront, TreeG } from "../scenery";
+import { useStore } from "../store";
 
 import { api, type ShopDetail, type ShopSummary } from "../api";
 import { WEB_BASE_URL } from "../config";
@@ -81,6 +82,19 @@ function hoursLines(openingHours: ShopDetail["openingHours"]): string[] {
  * half view; swiping up anywhere expands to 85% and the same gesture hands
  * off into content scrolling; pulling down from scroll-top collapses, then
  * dismisses. */
+function SheetHeart({ filled, size = 22 }: { filled: boolean; size?: number }) {
+  return (
+    <Svg fill={filled ? "#D9534F" : "none"} height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.2 4.5 6.8 4.5c2 0 3.4 1.1 4.2 2.3.8-1.2 2.2-2.3 4.2-2.3 3.6 0 5.4 3.5 4.1 6.8-1.8 4.6-9.3 9.2-9.3 9.2Z"
+        stroke={filled ? "#D9534F" : colors.neutral600}
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+      />
+    </Svg>
+  );
+}
+
 function DetailSheet({
   shop,
   onClose,
@@ -93,6 +107,8 @@ function DetailSheet({
   const sheetRef = useRef<BottomSheetModal>(null);
   const [detail, setDetail] = useState<ShopDetail | null>(null);
   const [index, setIndex] = useState(0);
+  const { favoriteSlugs, toggleFavorite } = useStore();
+  const isFavorite = favoriteSlugs.includes(shop.slug);
 
   useEffect(() => {
     sheetRef.current?.present();
@@ -172,6 +188,26 @@ function DetailSheet({
               )}
             </View>
           </View>
+          <Pressable
+            accessibilityLabel={isFavorite ? "Remove from favourites" : "Add to favourites"}
+            hitSlop={10}
+            onPress={() => void toggleFavorite(shop.slug)}
+            style={({ pressed }) => [
+              {
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: isFavorite ? "#FDECEC" : colors.surfaceAlt,
+                borderWidth: 1,
+                borderColor: isFavorite ? "#F3C1C1" : colors.dividerSoft
+              },
+              pressed && { transform: [{ scale: 0.88 }] }
+            ]}
+          >
+            <SheetHeart filled={isFavorite} />
+          </Pressable>
         </View>
 
         <View style={{ flexDirection: "row", gap: space(2), marginTop: space(3) }}>

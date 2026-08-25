@@ -141,19 +141,6 @@ export function ShopInfoScreen({
   return (
     <Screen
       headerLeft={<BackLink label="Salons" onPress={onBack} />}
-      headerRight={
-        <Pressable
-          accessibilityLabel={isFavorite ? "Remove from favourites" : "Add to favourites"}
-          hitSlop={10}
-          onPress={() => void toggleFavorite(slug)}
-          style={({ pressed }) => [
-            { width: 42, height: 42, borderRadius: 13, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", ...shadowSoft },
-            pressed && { transform: [{ scale: 0.9 }] }
-          ]}
-        >
-          <HeartIcon filled={isFavorite} />
-        </Pressable>
-      }
       title=""
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: space(3), marginTop: -space(6) }}>
@@ -166,6 +153,27 @@ export function ShopInfoScreen({
             {[shop.addressLine1, shop.city].filter(Boolean).join(", ")}
           </Text>
         </View>
+        <Pressable
+          accessibilityLabel={isFavorite ? "Remove from favourites" : "Add to favourites"}
+          hitSlop={10}
+          onPress={() => void toggleFavorite(slug)}
+          style={({ pressed }) => [
+            {
+              width: 48,
+              height: 48,
+              borderRadius: 15,
+              backgroundColor: isFavorite ? "#FDECEC" : colors.surface,
+              borderWidth: 1,
+              borderColor: isFavorite ? "#F3C1C1" : colors.dividerSoft,
+              alignItems: "center",
+              justifyContent: "center",
+              ...shadowSoft
+            },
+            pressed && { transform: [{ scale: 0.88 }] }
+          ]}
+        >
+          <HeartIcon filled={isFavorite} />
+        </Pressable>
       </View>
 
       <View style={{ flexDirection: "row", alignItems: "center", gap: space(2), marginTop: space(3), marginBottom: space(3), flexWrap: "wrap" }}>
