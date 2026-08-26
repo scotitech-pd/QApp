@@ -59,7 +59,7 @@ export function createCustomerRouter() {
     "/customer/me",
     asyncHandler(async (req, res) => {
       const body = (req.body ?? {}) as Record<string, unknown>;
-      sendItem(res, await updateCustomerProfile(requireCustomer(req), { firstName: body.firstName }));
+      sendItem(res, await updateCustomerProfile(requireCustomer(req), { firstName: body.firstName, avatarUrl: body.avatarUrl }));
     })
   );
 

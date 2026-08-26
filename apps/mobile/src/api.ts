@@ -43,6 +43,31 @@ async function request<T>(
   return (payload?.data ?? payload) as T;
 }
 
+export type ShopProfile = {
+  slug: string;
+  name: string;
+  publicDescription: string | null;
+  logoImageUrl: string | null;
+  coverImageUrl: string | null;
+  phone: string | null;
+  email: string | null;
+  serviceStationsCount: number;
+  defaultWalkInDurationMin: number;
+  openingHoursNote?: string | null;
+};
+
+export type ShopProfileInput = {
+  name: string;
+  publicDescription: string | null;
+  logoImageUrl: string | null;
+  coverImageUrl: string | null;
+  phone: string | null;
+  email: string | null;
+  openingHoursNote: string | null;
+  serviceStationsCount: number;
+  defaultWalkInDurationMin: number;
+};
+
 // ---------- Customer types ----------
 
 export type ShopSummary = {
@@ -307,6 +332,12 @@ export const api = {
   me: (token: string) => request<SessionUser>("/auth/me", { token }),
   opsDashboard: (token: string, slug: string) =>
     request<OpsDashboard>(`/ops/shops/${slug}/dashboard`, { token }),
+  opsShopProfile: (token: string, slug: string) =>
+    request<ShopProfile>(`/ops/shops/${slug}/profile`, { token }),
+  opsUpdateShopProfile: (token: string, slug: string, input: Partial<ShopProfileInput>) =>
+    request<ShopProfile>(`/ops/shops/${slug}/profile`, { method: "PUT", token, body: input }),
+  opsArchiveShop: (token: string, slug: string) =>
+    request<{ archived: boolean }>(`/ops/shops/${slug}/archive`, { method: "POST", token }),
   opsCall: (token: string, slug: string, trackingToken: string) =>
     request<unknown>(`/ops/shops/${slug}/queue/${trackingToken}/call`, {
       method: "POST",
@@ -319,10 +350,10 @@ export const api = {
       body: {},
       token
     }),
-  opsCompleteService: (token: string, slug: string, visitId: string) =>
+  opsCompleteService: (token: string, slug: string, visitId: string, serviceTag?: string) =>
     request<unknown>(`/ops/shops/${slug}/visits/${visitId}/complete-service`, {
       method: "POST",
-      body: {},
+      body: serviceTag ? { serviceTag } : {},
       token
     }),
   opsReleaseNoShow: (token: string, slug: string, trackingToken: string) =>
@@ -384,6 +415,8 @@ export const api = {
   customerHistory: (token: string) => request<VisitHistoryItem[]>("/customer/me/history", { token }),
   customerClaim: (token: string, trackingToken: string) =>
     request<CustomerProfile>("/customer/me/claim", { method: "POST", body: { trackingToken }, token }),
+  customerUpdateAvatar: (token: string, avatarUrl: string | null) =>
+    request<CustomerProfile>("/customer/me", { method: "PATCH", token, body: { avatarUrl } }),
   customerUpdate: (token: string, firstName: string) =>
     request<CustomerProfile>("/customer/me", { method: "PATCH", body: { firstName }, token }),
   customerDelete: (token: string) => request<{ deleted: boolean }>("/customer/me", { method: "DELETE", token }),

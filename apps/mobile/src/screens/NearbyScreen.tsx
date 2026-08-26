@@ -24,6 +24,113 @@ function waitTone(shop: ShopSummary): "accent" | "outline" | "neutral" {
   return count >= 5 ? "neutral" : "outline";
 }
 
+const VERTICALS: Record<string, { label: string; emoji: string }> = {
+  BARBER: { label: "Barbers", emoji: "\u{1F488}" },
+  SALON: { label: "Salons", emoji: "\u{1F487}" },
+  BEAUTY_CLINIC: { label: "Beauty", emoji: "\u2728" },
+  NAIL_STUDIO: { label: "Nails", emoji: "\u{1F485}" },
+  TATTOO_STUDIO: { label: "Tattoo", emoji: "\u{1F58B}" },
+  CAR_WASH: { label: "Car wash", emoji: "\u{1F697}" },
+  VEHICLE_SERVICE_CENTRE: { label: "Vehicle service", emoji: "\u{1F527}" },
+  PHYSIOTHERAPY_CLINIC: { label: "Physio", emoji: "\u{1FA7A}" }
+};
+
+/** Floating vertical switcher. Hidden while only one kind of shop is live —
+ * it appears by itself the day a second vertical (say, a car wash) onboards. */
+function VerticalFab({
+  options,
+  active,
+  onSelect
+}: {
+  options: string[];
+  active: string | null;
+  onSelect: (next: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (options.length <= 1) return null;
+  const current = active ? VERTICALS[active] : null;
+  return (
+    <>
+      <Pressable
+        accessibilityLabel="Choose a service type"
+        onPress={() => setOpen(true)}
+        style={({ pressed }) => [
+          {
+            position: "absolute",
+            right: space(5),
+            bottom: space(6),
+            minWidth: 56,
+            height: 56,
+            borderRadius: 28,
+            paddingHorizontal: current ? space(4) : 0,
+            backgroundColor: colors.accent,
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "row",
+            gap: 6,
+            shadowColor: colors.accent800,
+            shadowOpacity: 0.35,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 6
+          },
+          pressed && { transform: [{ scale: 0.94 }] }
+        ]}
+      >
+        <Text style={{ fontSize: 22 }}>{current ? current.emoji : "\u2630"}</Text>
+        {current ? (
+          <Text style={{ color: "#FFFFFF", fontFamily: fonts.bodyMedium, fontSize: 13 }}>{current.label}</Text>
+        ) : null}
+      </Pressable>
+      <Modal animationType="fade" onRequestClose={() => setOpen(false)} transparent visible={open}>
+        <Pressable onPress={() => setOpen(false)} style={{ flex: 1, backgroundColor: "rgba(29,31,32,0.35)", justifyContent: "flex-end" }}>
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderTopLeftRadius: radius.xl,
+              borderTopRightRadius: radius.xl,
+              padding: space(5),
+              paddingBottom: space(10),
+              gap: space(2)
+            }}
+          >
+            <Text style={{ fontFamily: fonts.heading, fontSize: 18, color: colors.text, marginBottom: space(1) }}>
+              What are you queuing for?
+            </Text>
+            {[null, ...options].map((key) => {
+              const item = key ? VERTICALS[key] : { label: "Everything nearby", emoji: "\u{1F30D}" };
+              const selected = active === key;
+              return (
+                <Pressable
+                  key={key ?? "all"}
+                  onPress={() => {
+                    onSelect(key);
+                    setOpen(false);
+                  }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: space(3),
+                    padding: space(3),
+                    borderRadius: radius.md,
+                    backgroundColor: selected ? colors.accent100 : colors.surfaceAlt
+                  }}
+                >
+                  <Text style={{ fontSize: 20 }}>{item.emoji}</Text>
+                  <Text style={{ flex: 1, fontFamily: fonts.bodyMedium, fontSize: 15, color: selected ? colors.accent700 : colors.text }}>
+                    {item.label}
+                  </Text>
+                  {selected ? <Text style={{ color: colors.accent700 }}>{"\u2713"}</Text> : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
 function QrGlyph() {
   const s = "#FFFFFF";
   return (
@@ -143,6 +250,7 @@ export function NearbyScreen({
   const [scanOpen, setScanOpen] = useState(false);
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [sort, setSort] = useState<PathSort>("wait");
+  const [vertical, setVertical] = useState<string | null>(null);
   const coordsRef = useRef<{ latitude: number; longitude: number } | null>(null);
 
   const load = useCallback(async () => {
@@ -182,7 +290,17 @@ export function NearbyScreen({
     return () => clearInterval(timer);
   }, [load]);
 
+  const verticalOptions = Array.from(
+    new Set((shops ?? []).map((shop) => shop.industryType).filter((v): v is string => Boolean(v && VERTICALS[v])))
+  );
+  const visibleShops = shops
+    ? vertical
+      ? shops.filter((shop) => shop.industryType === vertical)
+      : shops
+    : null;
+
   return (
+    <View style={{ flex: 1 }}>
     <Screen
       onRefresh={async () => {
         setRefreshing(true);
@@ -210,10 +328,14 @@ export function NearbyScreen({
       <ScanModal onClose={() => setScanOpen(false)} onShop={onOpenShop} visible={scanOpen} />
       {error ? <Note tone="danger">{error}</Note> : null}
       {!shops && !error ? <Loading /> : null}
-      {shops && shops.length > 0 ? (
-        <SalonPathView onOpenShop={onOpenShop} shops={shops} sort={sort} />
+      {visibleShops && visibleShops.length > 0 ? (
+        <SalonPathView onOpenShop={onOpenShop} shops={visibleShops} sort={sort} />
       ) : null}
-      {shops && shops.length === 0 ? <Note center>No salons are live yet. Pull down to refresh.</Note> : null}
+      {visibleShops && visibleShops.length === 0 ? (
+        <Note center>{vertical ? "Nothing of that type is live yet." : "No salons are live yet. Pull down to refresh."}</Note>
+      ) : null}
     </Screen>
+    <VerticalFab active={vertical} onSelect={setVertical} options={verticalOptions} />
+    </View>
   );
 }

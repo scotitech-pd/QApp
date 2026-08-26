@@ -1,8 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useState } from "react";
-import { Linking, Pressable, Text, View } from "react-native";
+import { Alert, Image, Linking, Pressable, Text, View } from "react-native";
 
-import { api, ApiRequestError, type OpsDashboard, type ShopCustomerRecord, type ShopInsights } from "../api";
+import { api, ApiRequestError, type OpsDashboard, type ShopCustomerRecord, type ShopInsights, type ShopProfile } from "../api";
+import { pickSquareImage } from "../images";
 import { WEB_BASE_URL } from "../config";
 import { useStore } from "../store";
 import { colors, fonts, radius, shadowSoft, space } from "../theme";
@@ -12,7 +13,7 @@ import { RegisterShopScreen } from "./RegisterShopScreen";
 const PENDING_KEY = "qapp.pendingSignup";
 type PendingSignup = { email: string; mobileNumber: string; businessName: string; submittedAt: string };
 
-type OwnerTab = "queue" | "customers" | "earnings";
+type OwnerTab = "queue" | "customers" | "earnings" | "shop";
 
 function maskPhone(phone: string | null) {
   if (!phone || phone.length < 6) return "—";
@@ -68,7 +69,8 @@ function SegTabs({ tab, onChange }: { tab: OwnerTab; onChange: (next: OwnerTab) 
   const items: Array<{ key: OwnerTab; label: string }> = [
     { key: "queue", label: "Queue" },
     { key: "customers", label: "Customers" },
-    { key: "earnings", label: "Earnings" }
+    { key: "earnings", label: "Earnings" },
+    { key: "shop", label: "Shop" }
   ];
   return (
     <View
@@ -132,6 +134,11 @@ export function ShopPortalScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [portalMode, setPortalMode] = useState<"signin" | "register">("signin");
   const [pending, setPending] = useState<PendingSignup | null>(null);
+  const [completingId, setCompletingId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<ShopProfile | null>(null);
+  const [profileDraft, setProfileDraft] = useState<{ name: string; publicDescription: string; phone: string } | null>(null);
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileNote, setProfileNote] = useState<string | null>(null);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
   useEffect(() => {
@@ -348,7 +355,25 @@ export function ShopPortalScreen() {
       refreshing={refreshing}
       title={dash.shop.name}
     >
-      <SegTabs onChange={setOwnerTab} tab={ownerTab} />
+      <SegTabs
+        onChange={(next) => {
+          setOwnerTab(next);
+          if (next === "shop" && accessToken && !profile) {
+            api
+              .opsShopProfile(accessToken, slug)
+              .then((loaded) => {
+                setProfile(loaded);
+                setProfileDraft({
+                  name: loaded.name ?? "",
+                  publicDescription: loaded.publicDescription ?? "",
+                  phone: loaded.phone ?? ""
+                });
+              })
+              .catch((err) => setError(err instanceof Error ? err.message : "Could not load shop profile."));
+          }
+        }}
+        tab={ownerTab}
+      />
 
       {ownerTab === "queue" ? (
         <>
@@ -444,8 +469,45 @@ export function ShopPortalScreen() {
                     </Text>
                   </View>
                   <Button kind="ghost" label="+10 min" onPress={() => void act(() => api.opsExtendService(accessToken, slug, visit.id))} small />
-                  <Button kind="ghost" label="Done" onPress={() => void act(() => api.opsCompleteService(accessToken, slug, visit.id))} small />
+                  <Button
+                    kind="ghost"
+                    label="Done"
+                    onPress={() => setCompletingId(completingId === visit.id ? null : visit.id)}
+                    small
+                  />
                 </View>
+                {completingId === visit.id ? (
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(1.5), marginTop: space(2.5) }}>
+                    {["Cut", "Shave", "Beard", "Colour", "Facial", "Other"].map((tag) => (
+                      <Pressable
+                        key={tag}
+                        onPress={() => {
+                          setCompletingId(null);
+                          void act(() => api.opsCompleteService(accessToken, slug, visit.id, tag));
+                        }}
+                        style={{
+                          paddingHorizontal: space(3),
+                          paddingVertical: space(1.5),
+                          borderRadius: radius.full,
+                          backgroundColor: colors.surface,
+                          borderWidth: 1,
+                          borderColor: colors.accent200
+                        }}
+                      >
+                        <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.accent700 }}>{tag}</Text>
+                      </Pressable>
+                    ))}
+                    <Pressable
+                      onPress={() => {
+                        setCompletingId(null);
+                        void act(() => api.opsCompleteService(accessToken, slug, visit.id));
+                      }}
+                      style={{ paddingHorizontal: space(3), paddingVertical: space(1.5), borderRadius: radius.full }}
+                    >
+                      <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.neutral600 }}>Just done ›</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
               </Blueprint>
             );
           })}
@@ -625,6 +687,185 @@ export function ShopPortalScreen() {
           </Blueprint>
           <Note tone="faint">Revenue tracking arrives with pricing — for now this counts served customers.</Note>
         </>
+      ) : null}
+
+      {ownerTab === "shop" ? (
+        !profile || !profileDraft ? (
+          <Loading />
+        ) : (
+          <>
+            <View style={{ marginBottom: space(2) }}>
+              <Kicker>Shop profile</Kicker>
+            </View>
+            <Blueprint>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: space(4) }}>
+                <View
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: radius.lg,
+                    backgroundColor: colors.accent100,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden"
+                  }}
+                >
+                  {profile.logoImageUrl ? (
+                    <Image source={{ uri: profile.logoImageUrl }} style={{ width: 64, height: 64 }} />
+                  ) : (
+                    <Text style={{ fontFamily: fonts.heading, fontSize: 24, color: colors.accent700 }}>
+                      {(profileDraft.name || "?").slice(0, 1).toUpperCase()}
+                    </Text>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.text }}>Shop logo</Text>
+                  <Text style={{ fontFamily: fonts.body, fontSize: 12, color: colors.neutral600, marginBottom: space(1.5) }}>
+                    Shown on the map and your page.
+                  </Text>
+                  <Button
+                    kind="secondary"
+                    label={profile.logoImageUrl ? "Change logo" : "Upload logo"}
+                    onPress={() => {
+                      void (async () => {
+                        const image = await pickSquareImage();
+                        if (!image || !accessToken) return;
+                        setProfileBusy(true);
+                        try {
+                          const updated = await api.opsUpdateShopProfile(accessToken, slug, { logoImageUrl: image });
+                          setProfile(updated);
+                          setProfileNote("Logo updated.");
+                        } catch (err) {
+                          setError(err instanceof Error ? err.message : "Could not upload logo.");
+                        } finally {
+                          setProfileBusy(false);
+                        }
+                      })();
+                    }}
+                    small
+                  />
+                </View>
+              </View>
+            </Blueprint>
+
+            <Field label="Shop name" onChangeText={(next) => setProfileDraft({ ...profileDraft, name: next })} value={profileDraft.name} />
+            <Field
+              label="Short description"
+              onChangeText={(next) => setProfileDraft({ ...profileDraft, publicDescription: next })}
+              placeholder="What customers should know"
+              value={profileDraft.publicDescription}
+            />
+            <Field
+              autoCapitalize="none"
+              keyboardType="phone-pad"
+              label="Shop phone"
+              onChangeText={(next) => setProfileDraft({ ...profileDraft, phone: next })}
+              placeholder="Customers call this number"
+              value={profileDraft.phone}
+            />
+
+            {([
+              { label: "Chairs / stations", key: "serviceStationsCount" as const, min: 1, max: 50, step: 1 },
+              { label: "Minutes per customer", key: "defaultWalkInDurationMin" as const, min: 5, max: 240, step: 5 }
+            ]).map((row) => (
+              <Blueprint key={row.key} style={{ paddingVertical: space(2.5) }}>
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                  <Text style={{ fontFamily: fonts.body, fontSize: 14, color: colors.text }}>{row.label}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: space(3) }}>
+                    {[-row.step, row.step].map((delta, i) => (
+                      <React.Fragment key={delta}>
+                        {i === 1 ? (
+                          <Text style={{ fontFamily: fonts.heading, fontSize: 18, color: colors.text, minWidth: 34, textAlign: "center" }}>
+                            {profile[row.key]}
+                          </Text>
+                        ) : null}
+                        <Pressable
+                          disabled={profileBusy}
+                          onPress={() => {
+                            if (!accessToken) return;
+                            const next = Math.max(row.min, Math.min(row.max, profile[row.key] + delta));
+                            if (next === profile[row.key]) return;
+                            setProfileBusy(true);
+                            api
+                              .opsUpdateShopProfile(accessToken, slug, { [row.key]: next })
+                              .then(setProfile)
+                              .catch((err) => setError(err instanceof Error ? err.message : "Could not save."))
+                              .finally(() => setProfileBusy(false));
+                          }}
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: radius.full,
+                            backgroundColor: colors.surfaceAlt,
+                            alignItems: "center",
+                            justifyContent: "center"
+                          }}
+                        >
+                          <Text style={{ fontFamily: fonts.heading, fontSize: 17, color: colors.accent700 }}>
+                            {delta > 0 ? "+" : "−"}
+                          </Text>
+                        </Pressable>
+                      </React.Fragment>
+                    ))}
+                  </View>
+                </View>
+              </Blueprint>
+            ))}
+
+            {profileNote ? <Note tone="faint">{profileNote}</Note> : null}
+            <Button
+              label="Save changes"
+              loading={profileBusy}
+              onPress={() => {
+                if (!accessToken) return;
+                setProfileBusy(true);
+                setProfileNote(null);
+                api
+                  .opsUpdateShopProfile(accessToken, slug, {
+                    name: profileDraft.name.trim(),
+                    publicDescription: profileDraft.publicDescription.trim() || null,
+                    phone: profileDraft.phone.trim() || null
+                  })
+                  .then((updated) => {
+                    setProfile(updated);
+                    setProfileNote("Saved. Customers see this immediately.");
+                  })
+                  .catch((err) => setError(err instanceof Error ? err.message : "Could not save."))
+                  .finally(() => setProfileBusy(false));
+              }}
+            />
+
+            <View style={{ marginTop: space(6), marginBottom: space(2) }}>
+              <Kicker>Danger zone</Kicker>
+            </View>
+            <Note tone="faint">
+              Closing hides your shop from customers and stops the queue. Your history stays; an admin can re-open you later.
+            </Note>
+            <Button
+              kind="ghost"
+              label="Close this shop"
+              onPress={() => {
+                Alert.alert("Close this shop?", "Customers will no longer see it or join your queue.", [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Close shop",
+                    style: "destructive",
+                    onPress: () => {
+                      if (!accessToken) return;
+                      api
+                        .opsArchiveShop(accessToken, slug)
+                        .then(() => {
+                          setOpsShopSlug(null);
+                          setDash(null);
+                        })
+                        .catch((err) => setError(err instanceof Error ? err.message : "Could not close the shop."));
+                    }
+                  }
+                ]);
+              }}
+            />
+          </>
+        )
       ) : null}
 
       {error ? (

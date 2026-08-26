@@ -3,6 +3,7 @@ import {
   OperationalEventType,
   ServiceAdjustmentType,
   VisitSource,
+  LocationStatus,
   VisitStatus
 } from "@prisma/client";
 
@@ -331,6 +332,25 @@ export async function getShopProfile(slug: string) {
   return serializeShopProfile(location);
 }
 
+
+/** Accepts an https URL or a small base64 data URI (pilot image storage until
+ * we have a file host). Returns undefined when absent, null when cleared. */
+function normalizeImageRef(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  if (typeof value !== "string") {
+    throw ApiError.badRequest("Image must be a URL or a small embedded image.");
+  }
+  const trimmed = value.trim();
+  if (/^https:\/\//.test(trimmed) && trimmed.length <= 1000) return trimmed;
+  if (/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(trimmed) && trimmed.length <= 220_000) {
+    return trimmed;
+  }
+  // Never fall through to null here: silently clearing a shop's existing
+  // logo on a failed upload would be worse than rejecting the request.
+  throw ApiError.badRequest("Image is too large or not a supported format.");
+}
+
 export function validateShopProfileInput(payload: unknown) {
   if (!payload || typeof payload !== "object") {
     return { ok: false as const, error: "Invalid payload." };
@@ -351,8 +371,8 @@ export function validateShopProfileInput(payload: unknown) {
     data: {
       name: normalizeOptionalText(input.name, 120),
       publicDescription: normalizeOptionalText(input.publicDescription, 600),
-      logoImageUrl: normalizeOptionalText(input.logoImageUrl, 1000),
-      coverImageUrl: normalizeOptionalText(input.coverImageUrl, 1000),
+      logoImageUrl: normalizeImageRef(input.logoImageUrl),
+      coverImageUrl: normalizeImageRef(input.coverImageUrl),
       phone: normalizeOptionalText(input.phone, 40),
       email: normalizeOptionalText(input.email, 160),
       openingHoursNote: normalizeOptionalText(input.openingHoursNote, 500),
@@ -731,7 +751,45 @@ export async function extendService(
   };
 }
 
-export async function completeService(slug: string, visitId: string) {
+const SERVICE_TAGS = ["Cut", "Shave", "Beard", "Colour", "Facial", "Other"] as const;
+
+export function normalizeServiceTag(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const match = SERVICE_TAGS.find((tag) => tag.toLowerCase() === value.trim().toLowerCase());
+  return match;
+}
+
+
+export async function archiveShop(slug: string) {
+  const location = await findLocationBySlug(slug);
+
+  if (!location) {
+    throw ApiError.notFound("Shop not found.");
+  }
+
+  const activeCount = await prisma.queueEntry.count({
+    where: {
+      businessLocationId: location.id,
+      removedAt: null,
+      releasedAt: null,
+      missedAt: null,
+      visit: { status: { in: [VisitStatus.QUEUED, VisitStatus.READY, VisitStatus.IN_SERVICE] } }
+    }
+  });
+
+  if (activeCount > 0) {
+    throw ApiError.conflict("Clear your queue first — customers are still waiting or in service.");
+  }
+
+  await prisma.businessLocation.update({
+    where: { id: location.id },
+    data: { isPublic: false, queueEnabled: false, status: LocationStatus.SUSPENDED }
+  });
+
+  return { archived: true, slug: location.slug };
+}
+
+export async function completeService(slug: string, visitId: string, serviceTag?: string) {
   const location = await findLocationBySlug(slug);
 
   if (!location) {
@@ -770,7 +828,8 @@ export async function completeService(slug: string, visitId: string) {
       data: {
         status: VisitStatus.COMPLETED,
         completedAt,
-        actualDurationMin
+        actualDurationMin,
+        ...(serviceTag ? { serviceTag } : {})
       },
       include: {
         customer: true

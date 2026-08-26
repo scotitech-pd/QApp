@@ -58,7 +58,13 @@
           "cameraPermission": "OnQ uses the camera to scan a shop's QR code so you can join its queue."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "OnQ uses your photos so you can set a profile picture or shop logo."
+        }
+      ]
     ],
     "scheme": [
       "onq",

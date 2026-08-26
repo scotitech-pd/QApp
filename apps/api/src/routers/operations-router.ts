@@ -7,7 +7,9 @@ import { requireAuthenticatedUser, requireBusinessRoles } from "../middleware/au
 import {
   addWalkInCustomer,
   callNextCustomer,
+  archiveShop,
   completeService,
+  normalizeServiceTag,
   extendService,
   getQueueDashboard,
   getShopInsights,
@@ -69,6 +71,16 @@ export function createOperationsRouter() {
       }
 
       const item = await updateShopProfile(getPathParam(req.params.slug), parsed.data);
+      sendItem(res, item);
+    })
+  );
+
+  router.post(
+    "/ops/shops/:slug/archive",
+    requireAuthenticatedUser,
+    requireBusinessRoles([MembershipRole.OWNER]),
+    asyncHandler(async (req, res) => {
+      const item = await archiveShop(getPathParam(req.params.slug));
       sendItem(res, item);
     })
   );
@@ -157,7 +169,12 @@ export function createOperationsRouter() {
     "/ops/shops/:slug/visits/:visitId/complete-service",
     ...requireOpsAccess,
     asyncHandler(async (req, res) => {
-      const item = await completeService(getPathParam(req.params.slug), getPathParam(req.params.visitId));
+      const body = req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : {};
+      const item = await completeService(
+        getPathParam(req.params.slug),
+        getPathParam(req.params.visitId),
+        normalizeServiceTag(body.serviceTag)
+      );
       sendItem(res, item);
     })
   );

@@ -646,6 +646,7 @@ model Visit {
   completedAt           DateTime?
   cancelledAt           DateTime?
   notes                 String?
+  serviceTag            String?
   businessLocation      BusinessLocation    @relation(fields: [businessLocationId], references: [id])
   customer              Customer            @relation(fields: [customerId], references: [id])
   service               Service?            @relation(fields: [serviceId], references: [id])

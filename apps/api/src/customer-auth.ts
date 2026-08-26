@@ -178,11 +178,37 @@ export async function getCustomerProfile(customerId: string) {
   return { ...serializeCustomer(customer), stats: { visits, ratings, favorites } };
 }
 
-export async function updateCustomerProfile(customerId: string, input: { firstName?: unknown }) {
+export async function updateCustomerProfile(
+  customerId: string,
+  input: { firstName?: unknown; avatarUrl?: unknown }
+) {
   await requireLiveCustomer(customerId);
-  const firstName = typeof input.firstName === "string" ? input.firstName.trim().slice(0, 40) : "";
-  if (!firstName) throw ApiError.badRequest("Name is required.");
-  await prisma.customer.update({ where: { id: customerId }, data: { firstName } });
+  const data: { firstName?: string; avatarUrl?: string | null } = {};
+
+  if (input.firstName !== undefined) {
+    const firstName = typeof input.firstName === "string" ? input.firstName.trim().slice(0, 40) : "";
+    if (!firstName) throw ApiError.badRequest("Name is required.");
+    data.firstName = firstName;
+  }
+
+  if (input.avatarUrl !== undefined) {
+    if (input.avatarUrl === null || input.avatarUrl === "") {
+      data.avatarUrl = null;
+    } else if (
+      typeof input.avatarUrl === "string" &&
+      (/^https:\/\//.test(input.avatarUrl) && input.avatarUrl.length <= 1000) ||
+      (typeof input.avatarUrl === "string" &&
+        /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(input.avatarUrl) &&
+        input.avatarUrl.length <= 220_000)
+    ) {
+      data.avatarUrl = input.avatarUrl as string;
+    } else {
+      throw ApiError.badRequest("Avatar must be a small image.");
+    }
+  }
+
+  if (Object.keys(data).length === 0) throw ApiError.badRequest("Nothing to update.");
+  await prisma.customer.update({ where: { id: customerId }, data });
   return getCustomerProfile(customerId);
 }
 

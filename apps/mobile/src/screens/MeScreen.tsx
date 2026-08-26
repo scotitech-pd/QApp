@@ -8,6 +8,7 @@ import { Alert, Image, Linking, Modal, Platform, Pressable, Share, Text, View } 
 
 import { api, type ShopSummary, type VisitHistoryItem } from "../api";
 import { GOOGLE_CLIENT_IDS, WEB_BASE_URL } from "../config";
+import { pickSquareImage } from "../images";
 import { LegalScreen, type LegalDoc } from "./LegalScreen";
 import { Storefront } from "../scenery";
 import { useStore } from "../store";
@@ -456,7 +457,41 @@ export function MeScreen({ onOpenShop }: { onOpenShop: (slug: string) => void })
     <Screen onRefresh={refreshProfile} title="Me">
       <View style={{ backgroundColor: colors.surface, borderRadius: radius.xl, padding: space(5), marginBottom: space(4), ...shadowCard }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: space(4) }}>
-          <Avatar name={customerProfile.firstName} url={customerProfile.avatarUrl} />
+          <Pressable
+            accessibilityLabel="Change profile photo"
+            onPress={() => {
+              void (async () => {
+                if (!customerToken) return;
+                const image = await pickSquareImage();
+                if (!image) return;
+                try {
+                  const profile = await api.customerUpdateAvatar(customerToken, image);
+                  setCustomerSession(customerToken, profile);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Could not update photo.");
+                }
+              })();
+            }}
+          >
+            <Avatar name={customerProfile.firstName} url={customerProfile.avatarUrl} />
+            <View
+              style={{
+                position: "absolute",
+                right: -2,
+                bottom: -2,
+                width: 22,
+                height: 22,
+                borderRadius: 11,
+                backgroundColor: colors.accent,
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 2,
+                borderColor: colors.surface
+              }}
+            >
+              <Text style={{ color: "#FFFFFF", fontSize: 11 }}>✎</Text>
+            </View>
+          </Pressable>
           <View style={{ flex: 1 }}>
             <Text numberOfLines={1} style={{ fontFamily: fonts.heading, fontSize: 24, color: colors.text }}>
               {customerProfile.firstName}

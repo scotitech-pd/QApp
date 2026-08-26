@@ -6,7 +6,7 @@ import Svg, { Circle, Ellipse, Path } from "react-native-svg";
 import { api, type QueueStatus, type ShopDetail } from "../api";
 import { WEB_BASE_URL } from "../config";
 import { formatKm, haversineKm } from "../geo";
-import { getPushTokenSafely, presentTurnAlert } from "../push";
+import { getPushTokenSafely, presentTurnAlert, scheduleReturnNudge } from "../push";
 import { StoneG, Storefront, TreeG } from "../scenery";
 import { useStore } from "../store";
 import { colors, fonts, radius, shadowSoft, space } from "../theme";
@@ -104,7 +104,7 @@ export function QueueScreen({ onFindSalon }: { onFindSalon: () => void }) {
   const [rated, setRated] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const detailSlugRef = useRef<string | null>(null);
-  const alertedRef = useRef<{ confirm: boolean; turn: boolean }>({ confirm: false, turn: false });
+  const alertedRef = useRef<{ confirm: boolean; turn: boolean; nudge: boolean }>({ confirm: false, turn: false, nudge: false });
 
   const load = useCallback(async () => {
     if (!trackingToken) return;
@@ -128,7 +128,7 @@ export function QueueScreen({ onFindSalon }: { onFindSalon: () => void }) {
     setRated(null);
     detailSlugRef.current = null;
     if (!trackingToken) return;
-    alertedRef.current = { confirm: false, turn: false };
+    alertedRef.current = { confirm: false, turn: false, nudge: false };
     void load();
     void (async () => {
       const token = await getPushTokenSafely();
@@ -151,6 +151,10 @@ export function QueueScreen({ onFindSalon }: { onFindSalon: () => void }) {
     if (turnNow && !alertedRef.current.turn) {
       alertedRef.current.turn = true;
       void presentTurnAlert("It's your turn!", `${status.shop.name} is ready for you — head in.`);
+    }
+    if (status.visitStatus === "COMPLETED" && !alertedRef.current.nudge) {
+      alertedRef.current.nudge = true;
+      void scheduleReturnNudge(status.shop.name, status.shop.slug);
     }
   }, [status]);
 
