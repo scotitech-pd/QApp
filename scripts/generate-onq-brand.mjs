@@ -47,26 +47,28 @@ function capsule(u, v, x1, y1, x2, y2, r) {
 
 // Returns null (background) or an [r,g,b] ink colour.
 function markInk(u, v) {
-  const cx = 0.47, cy = 0.455, ro = 0.325, ri = 0.223;
+  // Approved option C, ported verbatim from scripts/logo-options.mjs:
+  // ring with a notch at ~5 o'clock (that opening reads as the Q), white
+  // minute hand, amber hour hand, and a free-standing white dot.
+  const cx = 0.47, cy = 0.45, ro = 0.315, ri = 0.225;
   const d = Math.hypot(u - cx, v - cy);
 
-  // Tail first: a true Q tail crosses the bowl, so it starts inside the ring
-  // and runs out past it. (Detaching it made the mark read as a magnifier.)
-  const t1 = 0.150, t2 = 0.430, k = Math.SQRT1_2;
-  if (capsule(u, v, cx + t1 * k, cy + t1 * k, cx + t2 * k, cy + t2 * k, 0.050)) return WHITE;
-  // Trailing dot: "the queue keeps moving". Clear of the tail so it reads as its own mark.
-  if (Math.hypot(u - (cx + 0.552 * k), v - (cy + 0.552 * k)) <= 0.046) return AMBER;
+  if (d <= ro && d >= ri) {
+    // turn(): clockwise from 12 o'clock, normalised 0..1
+    let a = Math.atan2(u - cx, -(v - cy));
+    if (a < 0) a += Math.PI * 2;
+    const t = a / (Math.PI * 2);
+    return t > 0.60 && t < 0.66 ? null : WHITE;
+  }
 
-  // Closed ring = unmistakable bowl.
-  if (d <= ro && d >= ri) return WHITE;
-
-  // Hands sit at 2 o'clock so they never collide with the tail.
-  if (capsule(u, v, cx, cy, cx, cy - 0.148, 0.029)) return WHITE;          // minute
-  if (capsule(u, v, cx, cy, cx + 0.082, cy - 0.072, 0.029)) return AMBER;  // hour
-  if (d <= 0.034) return WHITE;                                           // pivot cap
+  if (capsule(u, v, cx, cy, cx, cy - 0.145, 0.028)) return WHITE;         // minute hand
+  if (capsule(u, v, cx, cy, cx + 0.115, cy + 0.045, 0.028)) return AMBER; // hour hand
+  if (Math.hypot(u - 0.775, v - 0.775) <= 0.072) return WHITE;            // trailing dot
 
   return null;
 }
+
+
 
 // Render one asset. opts: size, bg: "gradient"|"flat"|null(transparent), markScale, markColor
 function render({ size, bg, markScale = 1, markColor = WHITE, flatColor = null }) {
