@@ -19,6 +19,10 @@ type StoreValue = {
   deviceKey: string | null;
   favoriteSlugs: string[];
   setFavoriteSlugs: (slugs: string[]) => void;
+  /** Last join details the user asked us to remember (works without an account). */
+  savedJoinName: string | null;
+  savedJoinPhone: string | null;
+  setSavedJoinDetails: (name: string | null, phone: string | null) => void;
   toggleFavorite: (slug: string) => Promise<void>;
 };
 
@@ -32,7 +36,9 @@ const KEYS = {
   customerToken: "qapp.customerToken",
   customerProfile: "qapp.customerProfile",
   deviceKey: "qapp.deviceKey",
-  favorites: "qapp.favorites"
+  favorites: "qapp.favorites",
+  joinName: "qapp.joinName",
+  joinPhone: "qapp.joinPhone"
 };
 
 function createDeviceKey() {
@@ -50,6 +56,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
   const [deviceKey, setDeviceKey] = useState<string | null>(null);
   const [favoriteSlugs, setFavoriteSlugsState] = useState<string[]>([]);
+  const [savedJoinName, setSavedJoinName] = useState<string | null>(null);
+  const [savedJoinPhone, setSavedJoinPhone] = useState<string | null>(null);
 
   // Refs mirror current values so the stable setters below never need to be
   // rebuilt (rebuilding them is what caused the Me-tab render loop).
@@ -70,6 +78,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             AsyncStorage.getItem(KEYS.customerToken),
             AsyncStorage.getItem(KEYS.customerProfile)
           ]);
+        const [storedJoinName, storedJoinPhone] = await Promise.all([
+          AsyncStorage.getItem(KEYS.joinName),
+          AsyncStorage.getItem(KEYS.joinPhone)
+        ]);
+        if (storedJoinName) setSavedJoinName(storedJoinName);
+        if (storedJoinPhone) setSavedJoinPhone(storedJoinPhone);
         if (storedTracking) setTrackingTokenState(storedTracking);
         if (storedAccess) setAccessToken(storedAccess);
         if (storedUser) setUser(JSON.parse(storedUser));
@@ -105,6 +119,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // favourites are a nicety; never block startup
       }
     })();
+  }, []);
+
+  const setSavedJoinDetails = useCallback((name: string | null, phone: string | null) => {
+    setSavedJoinName(name);
+    setSavedJoinPhone(phone);
+    if (name) void AsyncStorage.setItem(KEYS.joinName, name);
+    else void AsyncStorage.removeItem(KEYS.joinName);
+    if (phone) void AsyncStorage.setItem(KEYS.joinPhone, phone);
+    else void AsyncStorage.removeItem(KEYS.joinPhone);
   }, []);
 
   const setTrackingToken = useCallback((token: string | null) => {
@@ -174,7 +197,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       deviceKey,
       favoriteSlugs,
       setFavoriteSlugs,
-      toggleFavorite
+      toggleFavorite,
+      savedJoinName,
+      savedJoinPhone,
+      setSavedJoinDetails
     }),
     [
       ready,
@@ -191,7 +217,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setOpsShopSlug,
       setCustomerSession,
       setFavoriteSlugs,
-      toggleFavorite
+      toggleFavorite,
+      savedJoinName,
+      savedJoinPhone,
+      setSavedJoinDetails
     ]
   );
 

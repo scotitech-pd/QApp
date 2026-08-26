@@ -108,10 +108,10 @@ function ShopLogo({
 
 function SheetHeart({ filled, size = 22 }: { filled: boolean; size?: number }) {
   return (
-    <Svg fill={filled ? "#D9534F" : "none"} height={size} viewBox="0 0 24 24" width={size}>
+    <Svg fill={filled ? colors.amber : "none"} height={size} viewBox="0 0 24 24" width={size}>
       <Path
         d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.2 4.5 6.8 4.5c2 0 3.4 1.1 4.2 2.3.8-1.2 2.2-2.3 4.2-2.3 3.6 0 5.4 3.5 4.1 6.8-1.8 4.6-9.3 9.2-9.3 9.2Z"
-        stroke={filled ? "#D9534F" : colors.neutral600}
+        stroke={filled ? colors.amberDeep : colors.neutral600}
         strokeLinejoin="round"
         strokeWidth={1.8}
       />
@@ -380,16 +380,73 @@ function DetailSheet({
   );
 }
 
+export function SortToggle({
+  sort,
+  hasLocation,
+  onChange
+}: {
+  sort: PathSort;
+  hasLocation: boolean;
+  onChange: (next: PathSort) => void;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        backgroundColor: colors.surfaceAlt,
+        borderRadius: radius.full,
+        padding: 3
+      }}
+    >
+      {(
+        [
+          { key: "wait" as const, label: "Quickest first", enabled: true },
+          { key: "distance" as const, label: "Nearest first", enabled: hasLocation }
+        ]
+      ).map((item) => {
+        const active = sort === item.key;
+        return (
+          <Pressable
+            disabled={!item.enabled}
+            key={item.key}
+            onPress={() => onChange(item.key)}
+            style={{
+              flex: 1,
+              paddingVertical: space(2),
+              alignItems: "center",
+              borderRadius: radius.full,
+              opacity: item.enabled ? 1 : 0.4,
+              backgroundColor: active ? colors.surface : "transparent",
+              ...(active ? shadowSoft : null)
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 12,
+                letterSpacing: 0.8,
+                textTransform: "uppercase",
+                fontFamily: fonts.heading,
+                color: active ? colors.accent700 : colors.neutral600
+              }}
+            >
+              {item.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export function SalonPathView({
   shops,
-  hasLocation,
+  sort,
   onOpenShop
 }: {
   shops: ShopSummary[];
-  hasLocation: boolean;
+  sort: PathSort;
   onOpenShop: (slug: string) => void;
 }) {
-  const [sort, setSort] = useState<PathSort>("wait");
   const [width, setWidth] = useState(0);
   const [selected, setSelected] = useState<ShopSummary | null>(null);
 
@@ -399,12 +456,6 @@ export function SalonPathView({
     else list.sort((a, b) => (a.distanceKm ?? Number.MAX_SAFE_INTEGER) - (b.distanceKm ?? Number.MAX_SAFE_INTEGER));
     return list.slice(0, 6);
   }, [shops, sort]);
-
-  function switchSort(next: PathSort) {
-    if (next === sort) return;
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setSort(next);
-  }
 
   /* Depth: rank 0 is the biggest marker, then everything shrinks and tightens. */
   const markerSize = (index: number) => Math.max(34, 60 - index * 6);
@@ -468,53 +519,6 @@ export function SalonPathView({
 
   return (
     <View>
-      <View
-        style={{
-          flexDirection: "row",
-          backgroundColor: colors.surfaceAlt,
-          borderRadius: radius.full,
-          padding: 3,
-          marginBottom: space(2)
-        }}
-      >
-        {(
-          [
-            { key: "wait" as const, label: "Quickest first", enabled: true },
-            { key: "distance" as const, label: "Nearest first", enabled: hasLocation }
-          ]
-        ).map((item) => {
-          const active = sort === item.key;
-          return (
-            <Pressable
-              disabled={!item.enabled}
-              key={item.key}
-              onPress={() => switchSort(item.key)}
-              style={{
-                flex: 1,
-                paddingVertical: space(2),
-                alignItems: "center",
-                borderRadius: radius.full,
-                opacity: item.enabled ? 1 : 0.4,
-                backgroundColor: active ? colors.surface : "transparent",
-                ...(active ? shadowSoft : null)
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 12,
-                  letterSpacing: 0.8,
-                  textTransform: "uppercase",
-                  fontFamily: fonts.heading,
-                  color: active ? colors.accent700 : colors.neutral600
-                }}
-              >
-                {item.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
       <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={{ height, position: "relative" }}>
         {width > 0 ? (
           <Svg height={height} pointerEvents="none" style={{ position: "absolute", inset: 0 }} width={width}>
@@ -632,11 +636,6 @@ export function SalonPathView({
         />
       ) : null}
 
-      {!hasLocation ? (
-        <Text style={{ fontSize: 12, color: colors.neutral500, fontFamily: fonts.body, textAlign: "center", marginTop: space(1) }}>
-          Allow location to route by distance.
-        </Text>
-      ) : null}
     </View>
   );
 }

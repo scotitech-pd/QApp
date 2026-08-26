@@ -60,7 +60,10 @@ export function Screen({
   onRefresh,
   refreshing,
   headerLeft,
-  headerRight
+  headerRight,
+  headerBottom,
+  fixedHeader,
+  scrollRef
 }: {
   title: string;
   subtitle?: string;
@@ -69,6 +72,11 @@ export function Screen({
   refreshing?: boolean;
   headerLeft?: React.ReactNode;
   headerRight?: React.ReactNode;
+  /** Extra row (filters, toggles) rendered under the subtitle, pinned with it. */
+  headerBottom?: React.ReactNode;
+  /** Keep the title bar pinned while the content scrolls beneath it. */
+  fixedHeader?: boolean;
+  scrollRef?: React.RefObject<ScrollView | null>;
 }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(10)).current;
@@ -80,10 +88,49 @@ export function Screen({
     ]).start();
   }, [opacity, translateY]);
 
+  const headerBlock = (
+    <>
+      {headerLeft}
+      <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: space(3) }}>
+        <Text style={[styles.title, { flexShrink: 1 }]}>{title}</Text>
+        {headerRight}
+      </View>
+      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      {headerBottom ? <View style={{ marginTop: space(3) }}>{headerBottom}</View> : null}
+    </>
+  );
+
+  if (fixedHeader) {
+    return (
+      <View style={styles.screen}>
+        <Animated.View style={[styles.fixedHeader, { opacity, transform: [{ translateY }] }]}>
+          {headerBlock}
+        </Animated.View>
+        <ScrollView
+          contentContainerStyle={styles.screenContentUnderHeader}
+          keyboardShouldPersistTaps="handled"
+          ref={scrollRef}
+          refreshControl={
+            onRefresh ? (
+              <RefreshControl onRefresh={onRefresh} refreshing={Boolean(refreshing)} tintColor={colors.muted} />
+            ) : undefined
+          }
+          style={styles.screen}
+        >
+          <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+            {children}
+            <View style={{ height: space(10) }} />
+          </Animated.View>
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <ScrollView
       contentContainerStyle={styles.screenContent}
       keyboardShouldPersistTaps="handled"
+      ref={scrollRef}
       refreshControl={
         onRefresh ? (
           <RefreshControl onRefresh={onRefresh} refreshing={Boolean(refreshing)} tintColor={colors.muted} />
@@ -92,12 +139,7 @@ export function Screen({
       style={styles.screen}
     >
       <Animated.View style={{ opacity, transform: [{ translateY }] }}>
-        {headerLeft}
-        <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: space(3) }}>
-          <Text style={[styles.title, { flexShrink: 1 }]}>{title}</Text>
-          {headerRight}
-        </View>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        {headerBlock}
         <View style={{ height: space(4) }} />
         {children}
         <View style={{ height: space(10) }} />
@@ -174,6 +216,7 @@ export function Button({
 }
 
 export function Field({
+  editable,
   label,
   value,
   onChangeText,
@@ -191,12 +234,14 @@ export function Field({
   secureTextEntry?: boolean;
   autoCapitalize?: "none" | "sentences" | "words";
   autoCorrect?: boolean;
+  editable?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   return (
     <View style={{ gap: 5, marginBottom: space(3) }}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
+        editable={editable}
         autoCapitalize={autoCapitalize ?? "sentences"}
         autoCorrect={autoCorrect}
         spellCheck={autoCorrect}
@@ -297,6 +342,16 @@ export function Loading() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   screenContent: { padding: space(5), paddingTop: space(4) },
+  fixedHeader: {
+    paddingHorizontal: space(5),
+    paddingTop: space(4),
+    paddingBottom: space(3),
+    backgroundColor: colors.bg,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(29,31,32,0.06)",
+    zIndex: 2
+  },
+  screenContentUnderHeader: { padding: space(5), paddingTop: space(3) },
   title: { fontSize: 30, fontFamily: fonts.heading, color: colors.text, lineHeight: 34 },
   subtitle: { fontSize: 13, color: colors.neutral600, marginTop: space(1), lineHeight: 19, fontFamily: fonts.body },
   kicker: {

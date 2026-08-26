@@ -7,7 +7,8 @@ import Svg, { Path as SvgPath, Rect as SvgRect } from "react-native-svg";
 import { api, type ShopSummary } from "../api";
 import { colors, fonts, radius, space } from "../theme";
 import { Blueprint, Button, Loading, Note, Screen, Tag } from "../ui";
-import { SalonPathView } from "./SalonPathView";
+import { LayoutAnimation } from "react-native";
+import { SalonPathView, SortToggle, type PathSort } from "./SalonPathView";
 
 function waitLabel(shop: ShopSummary) {
   if (shop.queuePaused) return "Paused";
@@ -141,6 +142,7 @@ export function NearbyScreen({
   const [refreshing, setRefreshing] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [sort, setSort] = useState<PathSort>("wait");
   const coordsRef = useRef<{ latitude: number; longitude: number } | null>(null);
 
   const load = useCallback(async () => {
@@ -188,6 +190,19 @@ export function NearbyScreen({
         setRefreshing(false);
       }}
       refreshing={refreshing}
+      fixedHeader
+      headerBottom={
+        shops && shops.length > 0 ? (
+          <SortToggle
+            hasLocation={coords != null}
+            onChange={(next) => {
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              setSort(next);
+            }}
+            sort={sort}
+          />
+        ) : null
+      }
       headerRight={<ScanButton onPress={() => setScanOpen(true)} />}
       subtitle="Live wait times · tap a salon to join its queue"
       title="Nearby salons"
@@ -196,7 +211,7 @@ export function NearbyScreen({
       {error ? <Note tone="danger">{error}</Note> : null}
       {!shops && !error ? <Loading /> : null}
       {shops && shops.length > 0 ? (
-        <SalonPathView hasLocation={coords != null} onOpenShop={onOpenShop} shops={shops} />
+        <SalonPathView onOpenShop={onOpenShop} shops={shops} sort={sort} />
       ) : null}
       {shops && shops.length === 0 ? <Note center>No salons are live yet. Pull down to refresh.</Note> : null}
     </Screen>

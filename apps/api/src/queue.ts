@@ -350,58 +350,18 @@ function serializeQueueStatusFromEntry(entry: {
   };
 }
 
-export async function verifyQueueJoin(challengeId: string, code: string) {
-  const challenge = await prisma.verificationChallenge.findUnique({
-    where: { id: challengeId },
-    include: {
-      customer: true,
-      businessLocation: true
-    }
-  });
-
-  if (!challenge || !challenge.customer || !challenge.businessLocation) {
-    throw ApiError.notFound("Verification challenge not found.");
-  }
-
-  const customer = challenge.customer;
-  const businessLocation = challenge.businessLocation;
-
-  if (challenge.status !== VerificationStatus.PENDING) {
-    throw ApiError.conflict("Verification challenge is no longer active.");
-  }
-
-  if (challenge.expiresAt.getTime() < Date.now()) {
-    await prisma.verificationChallenge.update({
-      where: { id: challenge.id },
-      data: {
-        status: VerificationStatus.EXPIRED
-      }
-    });
-    throw ApiError.conflict("Verification code has expired.");
-  }
-
-  if (challenge.codeHash !== hashCode(code)) {
-    throw ApiError.badRequest("Incorrect verification code.");
-  }
-
-  const existingEntry = await findActiveQueueEntryForCustomer(customer.id, businessLocation.id);
-
-  if (existingEntry) {
-    await prisma.verificationChallenge.update({
-      where: { id: challenge.id },
-      data: {
-        status: VerificationStatus.VERIFIED,
-        verifiedAt: new Date()
-      }
-    });
-
-    return {
-      alreadyJoined: true,
-      queueStatus: serializeQueueStatusFromEntry(existingEntry)
-    };
-  }
-
-  const result = await prisma.$transaction(async (tx) => {
+async function createQueueEntryForCustomer(
+  customer: { id: string },
+  businessLocation: {
+    id: string;
+    slug: string;
+    defaultWalkInDurationMin: number;
+    serviceStationsCount: number;
+  },
+  eventMetadata: Record<string, string>,
+  markPhoneVerified: boolean
+) {
+  return prisma.$transaction(async (tx) => {
     const activeQueueCount = await tx.queueEntry.count({
       where: {
         businessLocationId: businessLocation.id,
@@ -461,22 +421,16 @@ export async function verifyQueueJoin(challengeId: string, code: string) {
       }
     });
 
-    await tx.customer.update({
-      where: {
-        id: customer.id
-      },
-      data: {
-        phoneVerifiedAt: new Date()
-      }
-    });
-
-    await tx.verificationChallenge.update({
-      where: { id: challenge.id },
-      data: {
-        status: VerificationStatus.VERIFIED,
-        verifiedAt: new Date()
-      }
-    });
+    if (markPhoneVerified) {
+      await tx.customer.update({
+        where: {
+          id: customer.id
+        },
+        data: {
+          phoneVerifiedAt: new Date()
+        }
+      });
+    }
 
     await tx.operationalEvent.create({
       data: {
@@ -486,16 +440,151 @@ export async function verifyQueueJoin(challengeId: string, code: string) {
         type: "QUEUE_JOINED",
         metadata: {
           source: "REMOTE_QUEUE",
-          challengeId: challenge.id
+          ...eventMetadata
         }
       }
     });
 
     return queueEntry;
   });
+}
+
+export async function verifyQueueJoin(challengeId: string, code: string) {
+  const challenge = await prisma.verificationChallenge.findUnique({
+    where: { id: challengeId },
+    include: {
+      customer: true,
+      businessLocation: true
+    }
+  });
+
+  if (!challenge || !challenge.customer || !challenge.businessLocation) {
+    throw ApiError.notFound("Verification challenge not found.");
+  }
+
+  const customer = challenge.customer;
+  const businessLocation = challenge.businessLocation;
+
+  if (challenge.status !== VerificationStatus.PENDING) {
+    throw ApiError.conflict("Verification challenge is no longer active.");
+  }
+
+  if (challenge.expiresAt.getTime() < Date.now()) {
+    await prisma.verificationChallenge.update({
+      where: { id: challenge.id },
+      data: {
+        status: VerificationStatus.EXPIRED
+      }
+    });
+    throw ApiError.conflict("Verification code has expired.");
+  }
+
+  if (challenge.codeHash !== hashCode(code)) {
+    throw ApiError.badRequest("Incorrect verification code.");
+  }
+
+  const existingEntry = await findActiveQueueEntryForCustomer(customer.id, businessLocation.id);
+
+  if (existingEntry) {
+    await prisma.verificationChallenge.update({
+      where: { id: challenge.id },
+      data: {
+        status: VerificationStatus.VERIFIED,
+        verifiedAt: new Date()
+      }
+    });
+
+    return {
+      alreadyJoined: true,
+      queueStatus: serializeQueueStatusFromEntry(existingEntry)
+    };
+  }
+
+  const result = await createQueueEntryForCustomer(
+    customer,
+    businessLocation,
+    { challengeId: challenge.id },
+    true
+  );
+
+  await prisma.verificationChallenge.update({
+    where: { id: challenge.id },
+    data: {
+      status: VerificationStatus.VERIFIED,
+      verifiedAt: new Date()
+    }
+  });
 
   await processQueueLifecycle(businessLocation.id);
   emitShopQueueUpdated(businessLocation.slug);
+  emitQueueStatusUpdated(result.trackingToken);
+
+  const queueStatus = await getQueueStatusByTrackingToken(result.trackingToken);
+
+  return {
+    alreadyJoined: false,
+    queueStatus: queueStatus ?? serializeQueueStatusFromEntry(result)
+  };
+}
+
+export async function directQueueJoin(
+  customerId: string,
+  shopSlug: string,
+  guest?: { firstName: string; mobileNumber: string }
+) {
+  const location = await prisma.businessLocation.findFirst({
+    where: {
+      slug: shopSlug,
+      isPublic: true,
+      status: LocationStatus.LIVE
+    }
+  });
+
+  if (!location) {
+    throw ApiError.notFound("Shop not found.");
+  }
+
+  if (!location.queueEnabled || location.queuePaused) {
+    throw ApiError.conflict("Queue is not open for this shop right now.");
+  }
+
+  const account = await prisma.customer.findFirst({
+    where: { id: customerId, deletedAt: null }
+  });
+
+  if (!account) {
+    throw ApiError.unauthorized("Sign in to join directly.");
+  }
+
+  // Who takes the slot: the signed-in customer, or a guest they vouch for.
+  let customer = account;
+  if (guest) {
+    customer = await prisma.customer.upsert({
+      where: { phone: guest.mobileNumber },
+      update: { firstName: guest.firstName },
+      create: { firstName: guest.firstName, phone: guest.mobileNumber }
+    });
+  } else if (!account.phone) {
+    throw ApiError.badRequest("Add a phone number to join in one tap.");
+  }
+
+  const existingEntry = await findActiveQueueEntryForCustomer(customer.id, location.id);
+  if (existingEntry) {
+    return {
+      alreadyJoined: true,
+      queueStatus: serializeQueueStatusFromEntry(existingEntry)
+    };
+  }
+
+  const result = await createQueueEntryForCustomer(
+    customer,
+    location,
+    guest ? { joinMode: "DIRECT_GUEST", bookedByCustomerId: account.id } : { joinMode: "DIRECT" },
+    false
+  );
+
+  await processQueueLifecycle(location.id);
+  emitShopQueueUpdated(location.slug);
   emitQueueStatusUpdated(result.trackingToken);
 
   const queueStatus = await getQueueStatusByTrackingToken(result.trackingToken);

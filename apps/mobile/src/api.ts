@@ -262,6 +262,15 @@ export const api = {
       method: "POST",
       body: { shopSlug, firstName, mobileNumber }
     }),
+  joinDirect: (shopSlug: string, token: string, guest?: { firstName: string; mobileNumber: string }) =>
+    request<JoinVerifyResult>("/queue/join/direct", {
+      method: "POST",
+      token,
+      body: {
+        shopSlug,
+        ...(guest ? { forFirstName: guest.firstName, forPhone: guest.mobileNumber } : {})
+      }
+    }),
   joinVerify: (challengeId: string, code: string) =>
     request<JoinVerifyResult>("/queue/join/verify", {
       method: "POST",

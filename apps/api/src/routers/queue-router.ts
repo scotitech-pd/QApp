@@ -6,7 +6,9 @@ import { prisma } from "../prisma";
 
 import { ApiError } from "../core/api-error";
 import { asyncHandler, getPathParam, sendItem } from "../core/http";
+import { verifyCustomerToken } from "../customer-auth";
 import {
+  directQueueJoin,
   getQueueStatusByTrackingToken,
   leaveQueue,
   startQueueJoin,
@@ -47,6 +49,41 @@ export function createQueueRouter() {
 
       const item = await verifyQueueJoin(parsed.data.challengeId, parsed.data.code);
       sendItem(res, item);
+    })
+  );
+
+  router.post(
+    "/queue/join/direct",
+    asyncHandler(async (req, res) => {
+      const auth = req.headers.authorization;
+      const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+      const customerId = token ? verifyCustomerToken(token) : null;
+
+      if (!customerId) {
+        throw ApiError.unauthorized("Sign in to join directly.");
+      }
+
+      const body = req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : {};
+      let guest: { firstName: string; mobileNumber: string } | undefined;
+      if (body.forFirstName != null || body.forPhone != null) {
+        const parsed = validateQueueJoinStartInput({
+          shopSlug: "placeholder",
+          firstName: body.forFirstName,
+          mobileNumber: body.forPhone
+        });
+        if (!parsed.ok) {
+          throw ApiError.badRequest(parsed.error);
+        }
+        guest = { firstName: parsed.data.firstName, mobileNumber: parsed.data.mobileNumber };
+      }
+
+      const shopSlug = typeof body.shopSlug === "string" ? body.shopSlug.trim().toLowerCase() : "";
+      if (!shopSlug) {
+        throw ApiError.badRequest("shopSlug is required.");
+      }
+
+      const item = await directQueueJoin(customerId, shopSlug, guest);
+      sendItem(res, item, item.alreadyJoined ? 200 : 201);
     })
   );
 

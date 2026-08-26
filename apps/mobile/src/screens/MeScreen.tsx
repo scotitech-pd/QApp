@@ -4,10 +4,10 @@ import * as Google from "expo-auth-session/providers/google";
 import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Image, Linking, Modal, Platform, Pressable, Text, View } from "react-native";
+import { Alert, Image, Linking, Modal, Platform, Pressable, Share, Text, View } from "react-native";
 
 import { api, type ShopSummary, type VisitHistoryItem } from "../api";
-import { GOOGLE_CLIENT_IDS } from "../config";
+import { GOOGLE_CLIENT_IDS, WEB_BASE_URL } from "../config";
 import { LegalScreen, type LegalDoc } from "./LegalScreen";
 import { Storefront } from "../scenery";
 import { useStore } from "../store";
@@ -234,9 +234,35 @@ function FavouritesSection({ deviceKey, onOpenShop }: { deviceKey: string | null
   );
 }
 
+function shareApp() {
+  void Share.share({
+    message: `Skip the wait at your salon — I join the queue from home with OnQ. ${WEB_BASE_URL}`
+  });
+}
+
 function Footer({ onOpenLegal }: { onOpenLegal: (doc: LegalDoc) => void }) {
   return (
     <View style={{ alignItems: "center", gap: 4, marginTop: space(6) }}>
+      <Pressable
+        onPress={shareApp}
+        style={({ pressed }) => [
+          {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: space(2),
+            paddingHorizontal: space(4),
+            paddingVertical: space(2),
+            borderRadius: radius.full,
+            backgroundColor: colors.accent100,
+            marginBottom: space(3)
+          },
+          pressed && { opacity: 0.7 }
+        ]}
+      >
+        <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.accent700 }}>
+          ↗ Share OnQ with friends
+        </Text>
+      </Pressable>
       <View style={{ flexDirection: "row", gap: space(4) }}>
         <Pressable onPress={() => onOpenLegal("privacy")}>
           <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.accent700 }}>Privacy</Text>

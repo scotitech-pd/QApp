@@ -44,10 +44,10 @@ function StorefrontChip() {
 
 function HeartIcon({ filled, size = 22 }: { filled: boolean; size?: number }) {
   return (
-    <Svg fill={filled ? colors.danger : "none"} height={size} viewBox="0 0 24 24" width={size}>
+    <Svg fill={filled ? colors.amber : "none"} height={size} viewBox="0 0 24 24" width={size}>
       <SvgPath
         d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.2 4.5 6.8 4.5c2 0 3.4 1.1 4.2 2.3.8-1.2 2.2-2.3 4.2-2.3 3.6 0 5.4 3.5 4.1 6.8-1.8 4.6-9.3 9.2-9.3 9.2Z"
-        stroke={filled ? colors.danger : colors.neutral600}
+        stroke={filled ? colors.amberDeep : colors.neutral600}
         strokeLinejoin="round"
         strokeWidth={1.8}
       />
