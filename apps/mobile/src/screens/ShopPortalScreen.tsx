@@ -136,6 +136,7 @@ export function ShopPortalScreen() {
   const [portalMode, setPortalMode] = useState<"signin" | "register">("signin");
   const [pending, setPending] = useState<PendingSignup | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [profile, setProfile] = useState<ShopProfile | null>(null);
   const [profileDraft, setProfileDraft] = useState<{ name: string; publicDescription: string; phone: string } | null>(null);
   const [profileBusy, setProfileBusy] = useState(false);
@@ -370,7 +371,14 @@ export function ShopPortalScreen() {
                   phone: loaded.phone ?? ""
                 });
               })
-              .catch((err) => setError(err instanceof Error ? err.message : "Could not load shop profile."));
+              .catch((err) => {
+                const message = err instanceof Error ? err.message : "Could not load shop profile.";
+                setProfileError(
+                  /forbidden|not allow|role|permission|403/i.test(message)
+                    ? "Only the shop owner or manager can edit the shop profile and photos. Sign out on the Queue tab and sign in with the owner account."
+                    : message
+                );
+              });
           }
         }}
         tab={ownerTab}
@@ -678,7 +686,11 @@ export function ShopPortalScreen() {
 
       {ownerTab === "shop" ? (
         !profile || !profileDraft ? (
-          <Loading />
+          profileError ? (
+            <Note tone="danger">{profileError}</Note>
+          ) : (
+            <Loading />
+          )
         ) : (
           <>
             <View style={{ marginBottom: space(2) }}>
