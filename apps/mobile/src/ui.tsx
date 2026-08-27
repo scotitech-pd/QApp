@@ -62,7 +62,7 @@ export function Screen({
   headerLeft,
   headerRight,
   headerBottom,
-  fixedHeader,
+  fixedHeader = true,
   scrollRef
 }: {
   title: string;

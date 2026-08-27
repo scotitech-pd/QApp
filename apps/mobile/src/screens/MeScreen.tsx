@@ -226,7 +226,7 @@ function FavouritesSection({ deviceKey, onOpenShop }: { deviceKey: string | null
               <Text style={{ fontFamily: fonts.body, fontSize: 12.5, color: colors.neutral600 }}>{waitLine(shop)}</Text>
             </View>
             <Pressable hitSlop={10} onPress={() => void toggleFavorite(shop.slug)}>
-              <Text style={{ fontSize: 20, color: colors.danger }}>♥</Text>
+              <Text style={{ fontSize: 20, color: colors.amber }}>♥</Text>
             </Pressable>
           </View>
         </Blueprint>
