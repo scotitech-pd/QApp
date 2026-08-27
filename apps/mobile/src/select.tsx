@@ -106,3 +106,78 @@ export function Select<T extends string | number>({
     </View>
   );
 }
+
+/* Imperative pick-one sheet: present on demand (e.g. "Done" -> which service?).
+ * Same native bottom-sheet feel as Select, but not tied to a form field. */
+export function OptionSheet({
+  title,
+  options,
+  onPick,
+  onClose,
+  footerLabel,
+  onFooter
+}: {
+  title: string;
+  options: string[];
+  onPick: (value: string) => void;
+  onClose: () => void;
+  /** Plain, de-emphasised action under the list (e.g. "Just done — no tag"). */
+  footerLabel?: string;
+  onFooter?: () => void;
+}) {
+  const ref = useRef<BottomSheetModal>(null);
+
+  // Mount-to-present, like the salon detail sheet: the parent renders this
+  // conditionally, and unmounts it again from onClose.
+  React.useEffect(() => {
+    ref.current?.present();
+  }, []);
+
+  const renderBackdrop = useCallback(
+    (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
+      <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} pressBehavior="close" />
+    ),
+    []
+  );
+
+  return (
+    <BottomSheetModal
+      backdropComponent={renderBackdrop}
+      backgroundStyle={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
+      enableDynamicSizing={false}
+      handleIndicatorStyle={{ backgroundColor: colors.dividerSoft, width: 38 }}
+      onDismiss={onClose}
+      ref={ref}
+      snapPoints={["52%"]}
+    >
+      <BottomSheetScrollView contentContainerStyle={{ paddingHorizontal: space(5), paddingBottom: space(10) }}>
+        <Text style={{ fontFamily: fonts.heading, fontSize: 20, color: colors.text, marginBottom: space(2) }}>
+          {title}
+        </Text>
+        {options.map((option) => (
+          <Pressable
+            key={option}
+            onPress={() => onPick(option)}
+            style={({ pressed }) => [
+              {
+                flexDirection: "row",
+                alignItems: "center",
+                paddingVertical: space(3.5),
+                borderBottomWidth: 1,
+                borderBottomColor: colors.dividerSoft
+              },
+              pressed && { backgroundColor: colors.surfaceAlt, marginHorizontal: -space(5), paddingHorizontal: space(5) }
+            ]}
+          >
+            <Text style={{ fontSize: 16, fontFamily: fonts.body, color: colors.text }}>{option}</Text>
+          </Pressable>
+        ))}
+        {footerLabel ? (
+          <Pressable onPress={onFooter} style={{ paddingVertical: space(4), alignItems: "center" }}>
+            <Text style={{ fontSize: 14.5, fontFamily: fonts.bodyMedium, color: colors.neutral600 }}>{footerLabel}</Text>
+          </Pressable>
+        ) : null}
+      </BottomSheetScrollView>
+    </BottomSheetModal>
+  );
+}

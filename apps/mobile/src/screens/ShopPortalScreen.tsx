@@ -5,6 +5,7 @@ import { Alert, Image, Linking, Pressable, Text, View } from "react-native";
 import { api, ApiRequestError, type OpsDashboard, type ShopCustomerRecord, type ShopInsights, type ShopProfile } from "../api";
 import { pickSquareImage } from "../images";
 import { WEB_BASE_URL } from "../config";
+import { OptionSheet } from "../select";
 import { useStore } from "../store";
 import { colors, fonts, radius, shadowSoft, space } from "../theme";
 import { Blueprint, Button, Field, Kicker, Loading, Note, Screen, Tag } from "../ui";
@@ -472,46 +473,32 @@ export function ShopPortalScreen() {
                   <Button
                     kind="ghost"
                     label="Done"
-                    onPress={() => setCompletingId(completingId === visit.id ? null : visit.id)}
+                    onPress={() => setCompletingId(visit.id)}
                     small
                   />
                 </View>
-                {completingId === visit.id ? (
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(1.5), marginTop: space(2.5) }}>
-                    {["Cut", "Shave", "Beard", "Colour", "Facial", "Other"].map((tag) => (
-                      <Pressable
-                        key={tag}
-                        onPress={() => {
-                          setCompletingId(null);
-                          void act(() => api.opsCompleteService(accessToken, slug, visit.id, tag));
-                        }}
-                        style={{
-                          paddingHorizontal: space(3),
-                          paddingVertical: space(1.5),
-                          borderRadius: radius.full,
-                          backgroundColor: colors.surface,
-                          borderWidth: 1,
-                          borderColor: colors.accent200
-                        }}
-                      >
-                        <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.accent700 }}>{tag}</Text>
-                      </Pressable>
-                    ))}
-                    <Pressable
-                      onPress={() => {
-                        setCompletingId(null);
-                        void act(() => api.opsCompleteService(accessToken, slug, visit.id));
-                      }}
-                      style={{ paddingHorizontal: space(3), paddingVertical: space(1.5), borderRadius: radius.full }}
-                    >
-                      <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.neutral600 }}>Just done ›</Text>
-                    </Pressable>
-                  </View>
-                ) : null}
               </Blueprint>
             );
           })}
 
+          {completingId != null ? (
+          <OptionSheet
+            footerLabel="Just done — no tag"
+            onClose={() => setCompletingId(null)}
+            onFooter={() => {
+              const id = completingId;
+              setCompletingId(null);
+              if (id) void act(() => api.opsCompleteService(accessToken, slug, id));
+            }}
+            onPick={(tag) => {
+              const id = completingId;
+              setCompletingId(null);
+              if (id) void act(() => api.opsCompleteService(accessToken, slug, id, tag));
+            }}
+            options={["Cut", "Shave", "Beard", "Colour", "Facial", "Other"]}
+            title={`What did ${inService.find((v) => v.id === completingId)?.customer?.firstName ?? "they"} get?`}
+          />
+          ) : null}
           <View style={{ marginBottom: space(2) }}>
             <Kicker>Waiting</Kicker>
           </View>
