@@ -1,0 +1,16 @@
+# OnQ production — single origin for web, API and sockets.
+# Caddy provisions and renews the TLS certificate automatically.
+onq.scotitech.com {
+	encode gzip
+
+	# API + realtime -> Express/Socket.IO on :4000
+	@api path /v1/* /socket.io/* /health
+	handle @api {
+		reverse_proxy 127.0.0.1:4000
+	}
+
+	# Everything else -> Next.js web app on :3000
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}

@@ -1,10 +1,9 @@
-// Point the app at your API.
-// - Same Wi-Fi (phone or simulator): use your Mac's LAN IP below.
-// - Production later: change to your Render URL.
-export const API_BASE_URL = "http://192.168.0.20:4000";
+// Dev builds talk to the Mac on the LAN; release builds go to production.
+// One domain serves web, API (/v1) and sockets behind the reverse proxy.
+const DEV_HOST = "http://192.168.0.20";
 
-// Public web app (QR pages, share links). Later: your production domain.
-export const WEB_BASE_URL = "http://192.168.0.20:3000";
+export const API_BASE_URL = __DEV__ ? `${DEV_HOST}:4000` : "https://onq.scotitech.com";
+export const WEB_BASE_URL = __DEV__ ? `${DEV_HOST}:3000` : "https://onq.scotitech.com";
 
 // Google OAuth client IDs (project greedydog-980). Kept in code so dev builds
 // don't depend on a build-time embedded manifest; the API verifies the

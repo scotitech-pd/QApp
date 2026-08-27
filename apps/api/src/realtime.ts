@@ -13,9 +13,11 @@ function queueRoom(trackingToken: string) {
 }
 
 export function initializeRealtime(server: HttpServer) {
+  const raw = process.env.CORS_ALLOWED_ORIGINS ?? "";
+  const origins = raw.split(",").map((value) => value.trim()).filter(Boolean);
   io = new Server(server, {
     cors: {
-      origin: "*"
+      origin: origins.length > 0 ? origins : "*"
     }
   });
 

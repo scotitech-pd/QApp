@@ -9,11 +9,21 @@ import { requestLog } from "./middleware/request-log";
 import { createV1Router } from "./routers/v1-router";
 import { webPushPublicKey } from "./webpush";
 
+/** Browsers only: native apps skip CORS entirely. Set CORS_ALLOWED_ORIGINS to a
+ * comma-separated allowlist in production; unset means open (pilot/dev). */
+function corsOptions() {
+  const raw = process.env.CORS_ALLOWED_ORIGINS ?? "";
+  const origins = raw.split(",").map((value) => value.trim()).filter(Boolean);
+  return origins.length > 0 ? { origin: origins } : {};
+}
+
 export function createApp() {
   const app = express();
 
   app.disable("x-powered-by");
-  app.use(cors());
+  // Behind the production reverse proxy (Caddy) this yields real client IPs.
+  app.set("trust proxy", 1);
+  app.use(cors(corsOptions()));
   app.use(express.json({ limit: "1mb" }));
   app.use(requestContext);
   app.use(requestLog);
