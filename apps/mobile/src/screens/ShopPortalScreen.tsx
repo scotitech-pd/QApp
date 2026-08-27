@@ -1,10 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, Image, Linking, Pressable, Text, View } from "react-native";
+import { Alert, Image, Linking, Pressable, Text, View, ActivityIndicator } from "react-native";
 
 import { api, ApiRequestError, type OpsDashboard, type ShopCustomerRecord, type ShopInsights, type ShopProfile } from "../api";
 import { pickPhoto, pickSquareImage } from "../images";
 import { WEB_BASE_URL } from "../config";
+import { watchShop } from "../realtime";
 import { OptionSheet } from "../select";
 import { useStore } from "../store";
 import { colors, fonts, radius, shadowSoft, space } from "../theme";
@@ -204,8 +205,13 @@ export function ShopPortalScreen() {
   useEffect(() => {
     if (!accessToken || !slug) return;
     void load();
-    const timer = setInterval(() => void load(), 6000);
-    return () => clearInterval(timer);
+    // Sockets deliver changes the moment they happen; polling is the safety net.
+    const unwatch = watchShop(slug, () => void load());
+    const timer = setInterval(() => void load(), 15000);
+    return () => {
+      unwatch();
+      clearInterval(timer);
+    };
   }, [accessToken, slug, load]);
 
   async function signIn() {
@@ -781,6 +787,20 @@ export function ShopPortalScreen() {
                     <Image source={{ uri: photo.url }} style={{ width: 92, height: 92 }} />
                   </Pressable>
                 ))}
+                {profileBusy ? (
+                  <View
+                    style={{
+                      width: 92,
+                      height: 92,
+                      borderRadius: radius.md,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: colors.surfaceAlt
+                    }}
+                  >
+                    <ActivityIndicator color={colors.accent700} />
+                  </View>
+                ) : null}
                 {(profile.photos ?? []).length < 6 ? (
                   <Pressable
                     disabled={profileBusy}

@@ -8,6 +8,7 @@ import { WEB_BASE_URL } from "../config";
 import { formatKm, haversineKm } from "../geo";
 import { getPushTokenSafely, presentTurnAlert, scheduleReturnNudge } from "../push";
 import { StoneG, Storefront, TreeG } from "../scenery";
+import { watchQueue } from "../realtime";
 import { useStore } from "../store";
 import { colors, fonts, radius, shadowSoft, space } from "../theme";
 import { Blueprint, Button, EmptyState, Loading, Note, Screen, Tag } from "../ui";
@@ -136,8 +137,12 @@ export function QueueScreen({ onFindSalon }: { onFindSalon: () => void }) {
         api.registerPushToken(trackingToken, token).catch(() => undefined);
       }
     })();
-    const timer = setInterval(() => void load(), 4000);
-    return () => clearInterval(timer);
+    const unwatch = watchQueue(trackingToken, () => void load());
+    const timer = setInterval(() => void load(), 12000);
+    return () => {
+      unwatch();
+      clearInterval(timer);
+    };
   }, [trackingToken, load]);
 
   useEffect(() => {
