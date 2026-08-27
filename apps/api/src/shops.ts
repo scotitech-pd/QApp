@@ -233,6 +233,11 @@ export async function getApprovedShopBySlug(slug: string) {
     bestJoinReason: "Selected shop",
     isFavorite: false,
     reviewSummary: await loadReviewSummary(location.id),
-    reviews: await loadPublicReviewComments(location.id)
+    reviews: await loadPublicReviewComments(location.id),
+    photos: await prisma.businessLocationPhoto.findMany({
+      where: { businessLocationId: location.id },
+      orderBy: { sortIndex: "asc" },
+      select: { id: true, url: true }
+    })
   };
 }

@@ -54,6 +54,7 @@ export type ShopProfile = {
   serviceStationsCount: number;
   defaultWalkInDurationMin: number;
   openingHoursNote?: string | null;
+  photos?: Array<{ id: string; url: string }>;
 };
 
 export type ShopProfileInput = {
@@ -90,6 +91,7 @@ export type ShopSummary = {
 };
 
 export type ShopDetail = ShopSummary & {
+  photos?: Array<{ id: string; url: string }>;
   openingHours?: Record<string, string> | { note?: string } | null;
   serviceStationsCount?: number;
   phone?: string | null;
@@ -336,6 +338,10 @@ export const api = {
     request<ShopProfile>(`/ops/shops/${slug}/profile`, { token }),
   opsUpdateShopProfile: (token: string, slug: string, input: Partial<ShopProfileInput>) =>
     request<ShopProfile>(`/ops/shops/${slug}/profile`, { method: "PUT", token, body: input }),
+  opsAddShopPhoto: (token: string, slug: string, imageUrl: string) =>
+    request<{ id: string; url: string }>(`/ops/shops/${slug}/photos`, { method: "POST", token, body: { imageUrl } }),
+  opsRemoveShopPhoto: (token: string, slug: string, photoId: string) =>
+    request<{ removed: boolean }>(`/ops/shops/${slug}/photos/${photoId}`, { method: "DELETE", token }),
   opsArchiveShop: (token: string, slug: string) =>
     request<{ archived: boolean }>(`/ops/shops/${slug}/archive`, { method: "POST", token }),
   opsCall: (token: string, slug: string, trackingToken: string) =>

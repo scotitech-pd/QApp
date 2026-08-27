@@ -9,8 +9,7 @@ import {
   Share,
   Text,
   UIManager,
-  View
-} from "react-native";
+  View, ScrollView } from "react-native";
 import Svg, { Ellipse, Path } from "react-native-svg";
 
 import { FenceG, HayBaleG, SheepG, StoneG, Storefront, TractorG, TreeG } from "../scenery";
@@ -316,6 +315,23 @@ function DetailSheet({
             </Pressable>
           ))}
         </View>
+
+        {detail?.photos && detail.photos.length > 0 ? (
+          <ScrollView
+            contentContainerStyle={{ gap: space(2) }}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginTop: space(4) }}
+          >
+            {detail.photos.map((photo) => (
+              <Image
+                key={photo.id}
+                source={{ uri: photo.url }}
+                style={{ width: 156, height: 110, borderRadius: radius.md, backgroundColor: colors.surfaceAlt }}
+              />
+            ))}
+          </ScrollView>
+        ) : null}
 
         {detail?.publicDescription || hours.length > 0 ? (
           <View style={{ marginTop: space(4) }}>

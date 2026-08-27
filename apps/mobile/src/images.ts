@@ -31,3 +31,24 @@ export async function pickSquareImage(size = 256): Promise<string | null> {
   );
   return resized.base64 ? `data:image/jpeg;base64,${resized.base64}` : null;
 }
+
+/** Pick a photo keeping its aspect ratio, resized so the longest side fits
+ * `maxSide`. Returns a small JPEG data URI (pilot storage in DB). */
+export async function pickPhoto(maxSide = 720): Promise<string | null> {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],
+    quality: 0.9
+  });
+  if (result.canceled || !result.assets?.[0]) return null;
+
+  const asset = result.assets[0];
+  const w = asset.width ?? maxSide;
+  const h = asset.height ?? maxSide;
+  const scale = Math.min(1, maxSide / Math.max(w, h));
+  const resized = await manipulateAsync(
+    asset.uri,
+    scale < 1 ? [{ resize: { width: Math.round(w * scale), height: Math.round(h * scale) } }] : [],
+    { compress: 0.55, format: SaveFormat.JPEG, base64: true }
+  );
+  return resized.base64 ? `data:image/jpeg;base64,${resized.base64}` : null;
+}

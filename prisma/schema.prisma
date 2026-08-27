@@ -454,9 +454,21 @@ model BusinessLocation {
   sourceSignups          BusinessSignup[]
   customerReviews        CustomerReview[]
   favoriteProfiles       FavoriteBusinessLocation[]
+  photos                 BusinessLocationPhoto[]
 
   @@index([businessGroupId])
   @@index([status, isPublic])
+}
+
+model BusinessLocationPhoto {
+  id                 String           @id @default(uuid())
+  createdAt          DateTime         @default(now())
+  businessLocationId String
+  url                String
+  sortIndex          Int              @default(0)
+  businessLocation   BusinessLocation @relation(fields: [businessLocationId], references: [id], onDelete: Cascade)
+
+  @@index([businessLocationId, sortIndex])
 }
 
 model BusinessSignup {

@@ -5,7 +5,9 @@ import { ApiError } from "../core/api-error";
 import { asyncHandler, getPathParam, sendItem } from "../core/http";
 import { requireAuthenticatedUser, requireBusinessRoles } from "../middleware/authentication";
 import {
+  addShopPhoto,
   addWalkInCustomer,
+  removeShopPhoto,
   callNextCustomer,
   archiveShop,
   completeService,
@@ -81,6 +83,25 @@ export function createOperationsRouter() {
     requireBusinessRoles([MembershipRole.OWNER]),
     asyncHandler(async (req, res) => {
       const item = await archiveShop(getPathParam(req.params.slug));
+      sendItem(res, item);
+    })
+  );
+
+  router.post(
+    "/ops/shops/:slug/photos",
+    ...requireProfileAccess,
+    asyncHandler(async (req, res) => {
+      const body = req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : {};
+      const item = await addShopPhoto(getPathParam(req.params.slug), body.imageUrl);
+      sendItem(res, item, 201);
+    })
+  );
+
+  router.delete(
+    "/ops/shops/:slug/photos/:photoId",
+    ...requireProfileAccess,
+    asyncHandler(async (req, res) => {
+      const item = await removeShopPhoto(getPathParam(req.params.slug), getPathParam(req.params.photoId));
       sendItem(res, item);
     })
   );

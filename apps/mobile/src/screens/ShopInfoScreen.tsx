@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Linking, Platform, Pressable, Share, Text, View } from "react-native";
+import { Linking, Platform, Pressable, Share, Text, View, ScrollView, Image } from "react-native";
 import Svg, { Path as SvgPath, Rect as SvgRect } from "react-native-svg";
 
 import { api, type ShopDetail } from "../api";
@@ -235,6 +235,23 @@ export function ShopInfoScreen({
           </Pressable>
         ))}
       </View>
+
+      {shop.photos && shop.photos.length > 0 ? (
+        <ScrollView
+          contentContainerStyle={{ gap: space(2), paddingLeft: space(5), paddingRight: space(5) }}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginBottom: space(4), marginHorizontal: -space(5) }}
+        >
+          {shop.photos.map((photo) => (
+            <Image
+              key={photo.id}
+              source={{ uri: photo.url }}
+              style={{ width: 168, height: 118, borderRadius: radius.md, backgroundColor: colors.surfaceAlt }}
+            />
+          ))}
+        </ScrollView>
+      ) : null}
 
       {shop.publicDescription || hours.length > 0 ? (
         <>

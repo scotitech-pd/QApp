@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Alert, Image, Linking, Pressable, Text, View } from "react-native";
 
 import { api, ApiRequestError, type OpsDashboard, type ShopCustomerRecord, type ShopInsights, type ShopProfile } from "../api";
-import { pickSquareImage } from "../images";
+import { pickPhoto, pickSquareImage } from "../images";
 import { WEB_BASE_URL } from "../config";
 import { OptionSheet } from "../select";
 import { useStore } from "../store";
@@ -732,6 +732,78 @@ export function ShopPortalScreen() {
                     small
                   />
                 </View>
+              </View>
+            </Blueprint>
+
+            <Blueprint style={{ marginBottom: space(3) }}>
+              <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.text }}>Shop photos</Text>
+              <Text style={{ fontFamily: fonts.body, fontSize: 12, color: colors.neutral600, marginBottom: space(2) }}>
+                Inside, outside, your best work — customers see these on your page. Up to 6.
+              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space(2) }}>
+                {(profile.photos ?? []).map((photo) => (
+                  <Pressable
+                    key={photo.id}
+                    onPress={() => {
+                      Alert.alert("Remove photo?", "Customers will no longer see it.", [
+                        { text: "Keep", style: "cancel" },
+                        {
+                          text: "Remove",
+                          style: "destructive",
+                          onPress: () => {
+                            void (async () => {
+                              if (!accessToken) return;
+                              try {
+                                await api.opsRemoveShopPhoto(accessToken, slug, photo.id);
+                                setProfile({ ...profile, photos: (profile.photos ?? []).filter((entry) => entry.id !== photo.id) });
+                              } catch (err) {
+                                setError(err instanceof Error ? err.message : "Could not remove photo.");
+                              }
+                            })();
+                          }
+                        }
+                      ]);
+                    }}
+                    style={{ width: 92, height: 92, borderRadius: radius.md, overflow: "hidden", backgroundColor: colors.surfaceAlt }}
+                  >
+                    <Image source={{ uri: photo.url }} style={{ width: 92, height: 92 }} />
+                  </Pressable>
+                ))}
+                {(profile.photos ?? []).length < 6 ? (
+                  <Pressable
+                    disabled={profileBusy}
+                    onPress={() => {
+                      void (async () => {
+                        const image = await pickPhoto();
+                        if (!image || !accessToken) return;
+                        setProfileBusy(true);
+                        try {
+                          const added = await api.opsAddShopPhoto(accessToken, slug, image);
+                          setProfile({ ...profile, photos: [...(profile.photos ?? []), added] });
+                          setProfileNote("Photo added.");
+                        } catch (err) {
+                          setError(err instanceof Error ? err.message : "Could not add photo.");
+                        } finally {
+                          setProfileBusy(false);
+                        }
+                      })();
+                    }}
+                    style={{
+                      width: 92,
+                      height: 92,
+                      borderRadius: radius.md,
+                      borderWidth: 1.5,
+                      borderStyle: "dashed",
+                      borderColor: colors.accent200,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: colors.accent100
+                    }}
+                  >
+                    <Text style={{ fontFamily: fonts.heading, fontSize: 26, color: colors.accent700 }}>+</Text>
+                    <Text style={{ fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.accent700 }}>Add photo</Text>
+                  </Pressable>
+                ) : null}
               </View>
             </Blueprint>
 

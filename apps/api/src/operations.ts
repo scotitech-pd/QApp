@@ -329,7 +329,13 @@ export async function getShopProfile(slug: string) {
     throw ApiError.notFound("Shop not found.");
   }
 
-  return serializeShopProfile(location);
+  const photos = await prisma.businessLocationPhoto.findMany({
+    where: { businessLocationId: location.id },
+    orderBy: { sortIndex: "asc" },
+    select: { id: true, url: true }
+  });
+
+  return { ...serializeShopProfile(location), photos };
 }
 
 
@@ -349,6 +355,43 @@ function normalizeImageRef(value: unknown): string | null | undefined {
   // Never fall through to null here: silently clearing a shop's existing
   // logo on a failed upload would be worse than rejecting the request.
   throw ApiError.badRequest("Image is too large or not a supported format.");
+}
+
+const MAX_SHOP_PHOTOS = 6;
+
+export async function addShopPhoto(slug: string, imageUrl: unknown) {
+  const location = await findLocationBySlug(slug);
+  if (!location) {
+    throw ApiError.notFound("Shop not found.");
+  }
+  const url = normalizeImageRef(imageUrl);
+  if (!url) {
+    throw ApiError.badRequest("Photo is required.");
+  }
+  const count = await prisma.businessLocationPhoto.count({
+    where: { businessLocationId: location.id }
+  });
+  if (count >= MAX_SHOP_PHOTOS) {
+    throw ApiError.conflict(`You can keep up to ${MAX_SHOP_PHOTOS} photos. Remove one first.`);
+  }
+  const photo = await prisma.businessLocationPhoto.create({
+    data: { businessLocationId: location.id, url, sortIndex: count }
+  });
+  return { id: photo.id, url: photo.url };
+}
+
+export async function removeShopPhoto(slug: string, photoId: string) {
+  const location = await findLocationBySlug(slug);
+  if (!location) {
+    throw ApiError.notFound("Shop not found.");
+  }
+  const deleted = await prisma.businessLocationPhoto.deleteMany({
+    where: { id: photoId, businessLocationId: location.id }
+  });
+  if (deleted.count === 0) {
+    throw ApiError.notFound("Photo not found.");
+  }
+  return { removed: true };
 }
 
 export function validateShopProfileInput(payload: unknown) {
