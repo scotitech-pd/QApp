@@ -7,6 +7,7 @@ COPY apps/web/package.json apps/web/
 COPY prisma ./prisma
 RUN npm ci
 COPY apps/web ./apps/web
+COPY tsconfig.base.json ./
 ARG NEXT_PUBLIC_API_BASE_URL=https://onq.scotitech.com
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 RUN npm run build:web
