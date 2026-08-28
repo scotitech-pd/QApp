@@ -131,7 +131,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       <header className="app-header">
         <div className="app-header-row">
           <Link className="brand-lockup" href={ownerContext ? "/shop/dashboard" : "/"}>
-            <span className="brand-mark">Q</span>
+            <img alt="" className="brand-mark" height={40} src="/icons/icon-192.png" width={40} />
             <span className="brand-text">
               <strong>OnQ</strong>
               <small>{brandTagline}</small>

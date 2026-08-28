@@ -1,24 +1,28 @@
-/* OnQ design system.
- * Modern sans-serif, warm-neutral base, terracotta accent.
- * Mobile-first customer surfaces; tablet-friendly ops surfaces.
+/* OnQ design system — matches the mobile app's tokens (apps/mobile/src/theme.ts).
+ * Steel-blue accent on cool neutrals, amber for "your turn" moments.
+ * Barlow / Barlow Condensed, the same faces the app ships.
  */
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap");
 
 :root {
   color-scheme: light;
 
   /* Palette */
-  --bg: #faf7f1;
-  --bg-elevated: #f3ede1;
+  --bg: #f3f4f6;
+  --bg-elevated: #eef0f3;
   --surface: #ffffff;
-  --surface-alt: #fbf8f2;
-  --ink: #14181f;
+  --surface-alt: #eef0f3;
+  --ink: #1d1f20;
   --ink-2: #3f4653;
-  --muted: #6b7385;
-  --accent: #c0562b;
-  --accent-hover: #a9481f;
-  --accent-soft: #fbe7da;
-  --success: #16794a;
-  --success-soft: #dcf1e5;
+  --muted: #5c6470;
+  --accent: #5980a6;
+  --accent-hover: #416180;
+  --accent-soft: #eef6ff;
+  --accent-200: #d6ebff;
+  --accent-700: #416180;
+  --accent-800: #2c455d;
+  --success: #4a7d5f;
+  --success-soft: #e3efe7;
   --warn: #a76607;
   --warn-soft: #fdefd6;
   /* Amber: brand's second colour — "your turn / attention" moments and stars.
@@ -27,16 +31,16 @@
   --amber-deep: #b87c22;
   --amber-soft: #fcefdc;
 
-  --danger: #b53623;
-  --danger-soft: #fadfd9;
-  --border: rgba(20, 24, 31, 0.08);
-  --border-strong: rgba(20, 24, 31, 0.16);
-  --focus: rgba(192, 86, 43, 0.35);
+  --danger: #a64848;
+  --danger-soft: #f6e4e4;
+  --border: rgba(29, 31, 32, 0.08);
+  --border-strong: rgba(29, 31, 32, 0.16);
+  --focus: rgba(89, 128, 166, 0.38);
 
   /* Elevation */
-  --shadow-sm: 0 1px 2px rgba(20, 24, 31, 0.04), 0 2px 6px rgba(20, 24, 31, 0.04);
-  --shadow-md: 0 4px 12px rgba(20, 24, 31, 0.06), 0 12px 32px rgba(20, 24, 31, 0.08);
-  --shadow-lg: 0 12px 24px rgba(20, 24, 31, 0.08), 0 32px 64px rgba(20, 24, 31, 0.12);
+  --shadow-sm: 0 1px 2px rgba(29, 31, 32, 0.04), 0 2px 6px rgba(29, 31, 32, 0.04);
+  --shadow-md: 0 4px 12px rgba(29, 31, 32, 0.06), 0 12px 32px rgba(29, 31, 32, 0.08);
+  --shadow-lg: 0 12px 24px rgba(29, 31, 32, 0.08), 0 32px 64px rgba(29, 31, 32, 0.12);
 
   /* Radii */
   --radius-sm: 8px;
@@ -59,10 +63,10 @@
 
   /* Typography */
   --font-sans:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto,
+    "Barlow", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   --font-display:
-    "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    "Barlow Condensed", "Barlow", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 * {
@@ -214,17 +218,12 @@ code.inline {
 }
 
 .brand-mark {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 40px;
   height: 40px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #101828, #24314a);
-  color: #f4ebd0;
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
   box-shadow: var(--shadow-sm);
+  object-fit: cover;
 }
 
 .brand-lockup strong,
@@ -963,8 +962,8 @@ code.inline {
 /* -------- Queue status (customer waiting) -------- */
 
 .queue-live-card {
-  background: linear-gradient(180deg, #101828 0%, #1a2439 100%);
-  color: #f4ebd0;
+  background: linear-gradient(180deg, #47688d 0%, #2c455d 100%);
+  color: #f4f6f8;
   padding: var(--space-8);
   border-radius: var(--radius-xl);
   display: flex;
@@ -976,13 +975,13 @@ code.inline {
 
 .queue-live-card h1,
 .queue-live-card h2,
-.queue-live-card h3 { color: #f4ebd0; }
+.queue-live-card h3 { color: #f4f6f8; }
 
 .queue-live-card p { color: rgba(244, 235, 208, 0.75); }
 
 .queue-live-card .pill {
   background: rgba(244, 235, 208, 0.15);
-  color: #f4ebd0;
+  color: #f4f6f8;
   border-color: transparent;
 }
 
@@ -1010,7 +1009,7 @@ code.inline {
   font-family: var(--font-display);
   font-size: 1.5rem;
   font-weight: 700;
-  color: #f4ebd0;
+  color: #f4f6f8;
   letter-spacing: -0.02em;
 }
 
@@ -1035,7 +1034,7 @@ code.inline {
 
 .queue-journey > div > div strong {
   font-weight: 600;
-  color: #f4ebd0;
+  color: #f4f6f8;
   font-size: 0.95rem;
 }
 
@@ -1310,8 +1309,8 @@ code.inline {
 
 .json-panel {
   padding: var(--space-4);
-  background: #14181f;
-  color: #f4ebd0;
+  background: #232a31;
+  color: #f4f6f8;
   border-radius: var(--radius-md);
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.85rem;

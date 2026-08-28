@@ -1,197 +1,165 @@
-# OnQ Production Deployment — onq.scotitech.com
+# OnQ Production — onq.scotitech.com
 
-Audience: DevOps. Goal: OnQ live on Scotitech's own server behind a single
-domain. One box runs everything: both apps and PostgreSQL.
+**Status: LIVE** (deployed 2026-08-28). This documents the deployment as it
+actually runs, and is the runbook for operating and updating it.
+
+OnQ shares the Enterprise-Portal VM (`192.168.0.101`) with appdeploy, axos and
+uptime-kuma. It is fully containerised and isolated: its own containers, its
+own PostgreSQL, its own localhost-only ports. The only shared surface is nginx,
+which gained one new vhost file — no existing config was modified.
 
 ```
-                    ┌──────────────────────── server ────────────────────────┐
-customer/owner ──►  │  Caddy :443  (TLS, reverse proxy)                      │
-  apps + browsers   │   ├── /v1/* , /socket.io/* , /health ──► onq-api :4000 │──► postgres :5432
-                    │   └── everything else ────────────────► onq-web :3000  │    (same box)
-                    └────────────────────────────────────────────────────────┘
+                          ┌──────────── VM 101 (192.168.0.101) ────────────┐
+onq.scotitech.com ──443──►│  nginx  (TLS, existing — one new vhost)        │
+                          │   ├─ /v1/*  /socket.io/*  /health ─► :4000 api │
+                          │   └─ everything else ──────────────► :3100 web │
+                          │                                                │
+                          │  docker compose "onq":                         │
+                          │    onq-api-1  → 127.0.0.1:4000                 │
+                          │    onq-web-1  → 127.0.0.1:3100                 │
+                          │    onq-db-1   → postgres 16, internal only     │
+                          │                 volume: onq_onq-pgdata         │
+                          └────────────────────────────────────────────────┘
 ```
 
-Single origin = no CORS headaches, one certificate, one DNS record.
-All deploy files referenced below live in the repo under `deploy/`.
+Neighbours on this VM (untouched): appdeploy `8080`/`3001`, axos `3000`/`3002`,
+uptime-kuma `3030`.
 
 ---
 
-## 0. Prerequisites
+## Facts
 
-| Item | Requirement |
+| Item | Value |
 |---|---|
-| Server | Ubuntu 22.04+ (2 GB RAM is plenty for the pilot) |
-| DNS | `A` record: `onq.scotitech.com` → server IP (do this first; TLS needs it) |
-| Firewall | Allow 80 + 443 inbound; keep 3000/4000 closed (localhost-only) |
-| Node.js | v22 LTS (`curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash - && sudo apt install -y nodejs`) |
-| PM2 | `sudo npm i -g pm2` |
-| PostgreSQL | 16.x: `sudo apt install -y postgresql postgresql-contrib` |
-| Caddy | Install from official repo: <https://caddyserver.com/docs/install#debian-ubuntu-raspbian> |
-| Git access | Read access to `github.com/scotitech-pd/QApp` (deploy key or PAT) |
+| Public URL | <https://onq.scotitech.com> |
+| App directory | `/home/hitesh/onq/app` |
+| Git remote (on box) | `/home/hitesh/onq/repo.git` (pushed to over SSH) |
+| Env file | `/home/hitesh/onq/app/.env` (chmod 600, secrets generated on server) |
+| Compose file | `deploy/docker-compose.yml` |
+| nginx vhost | `/etc/nginx/sites-available/onq.scotitech.com` |
+| TLS | Certbot, expires 2026-11-26, auto-renew scheduled |
+| Admin credentials | `/home/hitesh/onq/admin-credentials.txt` — move to a password manager and delete |
+| DB volume | `onq_onq-pgdata` (Docker named volume) |
 
-## 1. One-time server setup
+## Deploying an update
 
-```bash
-# App user + directories
-sudo useradd -m -s /bin/bash onq
-sudo mkdir -p /srv/onq/logs
-sudo chown -R onq:onq /srv/onq
-
-# Clone as the onq user
-sudo -iu onq
-git clone git@github.com:scotitech-pd/QApp.git /srv/onq/app
-exit
-```
-
-Create the database and its user (Postgres listens on localhost only by
-default — keep it that way):
+From the development Mac, push code to the server's bare repo:
 
 ```bash
-DB_PASS=$(openssl rand -hex 24) && echo "DB password: $DB_PASS"   # save it for .env
-sudo -u postgres psql -c "CREATE ROLE onq LOGIN PASSWORD '$DB_PASS';"
-sudo -u postgres psql -c "CREATE DATABASE onq OWNER onq;"
+git push server main          # remote: onq-server:onq/repo.git
 ```
 
-## 2. Secrets and environment
-
-1. Create the env file:
+Then on the server:
 
 ```bash
-cp /srv/onq/app/deploy/env.production.example /srv/onq/app/.env
-nano /srv/onq/app/.env    # fill every <...>
-chmod 600 /srv/onq/app/.env
+cd ~/onq/app
+git pull
+docker compose --env-file .env -f deploy/docker-compose.yml up -d --build
 ```
 
-Generate the secrets it asks for:
+The API container runs `prisma migrate deploy` on every start, so schema
+changes apply automatically. First build takes 10–15 min; later builds 2–3 min
+thanks to layer caching.
+
+## Operating
 
 ```bash
-openssl rand -hex 48                  # AUTH_ACCESS_TOKEN_SECRET
-npx web-push generate-vapid-keys     # VAPID public + private
+cd ~/onq/app
+COMPOSE="docker compose --env-file .env -f deploy/docker-compose.yml"
+
+$COMPOSE ps                    # status
+$COMPOSE logs -f api           # API logs (also: web, db)
+$COMPOSE restart api           # restart one service
+$COMPOSE down                  # stop all (data survives in the volume)
+$COMPOSE up -d                 # start all
 ```
 
-## 3. Caddy (TLS + routing)
+Health checks:
 
 ```bash
-sudo cp /srv/onq/app/deploy/Caddyfile /etc/caddy/Caddyfile
-sudo systemctl reload caddy
+curl -s https://onq.scotitech.com/health     # {"status":"ok",...}
+curl -s https://onq.scotitech.com/v1/shops   # approved shops JSON
 ```
 
-Caddy obtains and renews the Let's Encrypt certificate automatically once DNS
-resolves to this server.
+## Backups (set this up — not yet automated)
 
-## 4. First deploy
+The database lives in the Docker volume `onq_onq-pgdata` on this VM. Nothing
+backs it up automatically yet. Add to the `hitesh` crontab (`crontab -e`):
 
 ```bash
-sudo -iu onq
-/srv/onq/app/deploy/deploy.sh
+mkdir -p ~/onq/backups
+# 02:30 nightly, 14-day retention
+30 2 * * * cd /home/hitesh/onq/app && docker compose --env-file .env -f deploy/docker-compose.yml exec -T db pg_dump -U onq onq | gzip > /home/hitesh/onq/backups/onq-$(date +\%F).sql.gz && find /home/hitesh/onq/backups -name 'onq-*.sql.gz' -mtime +14 -delete
 ```
 
-The script is idempotent and is also the **only** thing you run for every
-subsequent release. It: pulls `main` → `npm ci` → Prisma generate + **migrate
-deploy** (creates the entire schema on first run) → builds API + web →
-`pm2 startOrReload` → health checks.
+**Copy backups off this VM** — a Proxmox VM backup of 101, or an rsync to
+another machine. A backup that only exists on the same disk as the database is
+not a backup.
 
-Make PM2 survive reboots (once):
+Restore drill (run once before you need it):
 
 ```bash
-pm2 startup systemd -u onq --hp /home/onq   # run the sudo line it prints
-pm2 save
+cd ~/onq/app
+COMPOSE="docker compose --env-file .env -f deploy/docker-compose.yml"
+$COMPOSE exec -T db psql -U onq -c 'CREATE DATABASE onq_restore_test;'
+gunzip -c ~/onq/backups/onq-<date>.sql.gz | $COMPOSE exec -T db psql -U onq -d onq_restore_test
+$COMPOSE exec -T db psql -U onq -d onq_restore_test -c 'SELECT count(*) FROM "BusinessLocation";'
+$COMPOSE exec -T db psql -U onq -c 'DROP DATABASE onq_restore_test;'
 ```
 
-## 5. Production data setup (once, after first deploy)
+## TLS renewal
+
+Certbot renews automatically, but the HTTP-01 challenge needs **port 80
+reachable from the internet**. The router currently forwards only 443, so open
+`80 → 192.168.0.101:80` around renewal time (before 2026-11-26), then close it.
+
+This affects the other scotitech certificates on this VM too — worth checking
+`sudo certbot certificates` for expiry dates and doing them in one window.
+
+## Rollback
 
 ```bash
-cd /srv/onq/app
-
-# Real platform admin (replaces demo credentials)
-node scripts/create-admin.mjs admin@scotitech.com 'STRONG-PASSWORD-HERE' 'Pradeep' 'Dahiya'
-
-# Remove demo/seed accounts if the database still holds them:
-#   admin@qapp.demo / owner@fadeyard.demo / manager@fadeyard.demo / staff@fadeyard.demo
-# and the demo shops (Fade Yard etc.). Coordinate with the product owner —
-# do NOT wipe the database; the pilot shop may already have real data.
-
-# Pilot shop: registers itself in the app (Shop tab → Register your shop),
-# then the admin approves it at https://onq.scotitech.com/admin/business-signups
+cd ~/onq/app
+git log --oneline -5
+git reset --hard <last-good-sha>
+docker compose --env-file .env -f deploy/docker-compose.yml up -d --build
 ```
 
-## 6. Verification checklist
+Migrations are forward-only. **Never** run `prisma migrate reset` — it drops
+all data. For a bad migration, write a new corrective migration.
+
+Whole-VM rollback: restore the Proxmox snapshot of VM 101 (affects every
+product on the VM — coordinate first).
+
+## Production data
+
+The database starts empty by design — no demo shops or demo users.
+
+1. Shop owner registers in the app (Shop tab → *Register your shop*) or at
+   <https://onq.scotitech.com/business/signup>
+2. Admin approves at <https://onq.scotitech.com/admin/business-signups>
+3. Shop appears in customer discovery and can take its first queue
+
+To create another platform admin:
 
 ```bash
-curl -s https://onq.scotitech.com/health            # {"status":"ok",...}
-curl -s https://onq.scotitech.com/v1/shops | head   # JSON with data[]
+cd ~/onq/app && source .env
+docker run --rm --network onq_default -v ~/onq/app/scripts:/app/scripts:ro \
+  -e DATABASE_URL="postgresql://onq:${ONQ_DB_PASSWORD}@db:5432/onq" \
+  -e DIRECT_URL="postgresql://onq:${ONQ_DB_PASSWORD}@db:5432/onq" \
+  onq-api node scripts/create-admin.mjs <email> '<password>' <First> <Last>
 ```
 
-- [ ] `https://onq.scotitech.com` loads the web app over TLS
-- [ ] Realtime: open the site, join a queue from a second browser — position
-      updates without refresh (Socket.IO through the proxy)
-- [ ] Admin sign-in works with the NEW admin credentials
-- [ ] `pm2 status` shows `onq-api` and `onq-web` online
-- [ ] Reboot test: `sudo reboot`, then confirm both processes return
+## Known pilot trade-offs
 
-## 7. Backups (not optional)
-
-The database now lives on this server, so backups are our responsibility.
-Nightly dump, 14-day retention, as the `onq` user's crontab (`crontab -e`):
-
-```bash
-mkdir -p /srv/onq/backups
-# crontab entry — 02:30 nightly
-30 2 * * * pg_dump "postgresql://onq:<DB-PASSWORD>@127.0.0.1:5432/onq" | gzip > /srv/onq/backups/onq-$(date +\%F).sql.gz && find /srv/onq/backups -name 'onq-*.sql.gz' -mtime +14 -delete
-```
-
-**Copy backups off the server** (this is the part that saves you when the disk
-dies): sync `/srv/onq/backups/` daily to any second location — object storage,
-another server, even a scheduled `rsync` to an office machine.
-
-Restore drill (run once now so it isn't the first time during an emergency):
-
-```bash
-createdb -h 127.0.0.1 -U onq onq_restore_test
-gunzip -c /srv/onq/backups/onq-<date>.sql.gz | psql -h 127.0.0.1 -U onq onq_restore_test
-psql -h 127.0.0.1 -U onq -d onq_restore_test -c 'SELECT count(*) FROM "BusinessLocation";'
-dropdb -h 127.0.0.1 -U onq onq_restore_test
-```
-
-## 8. Releases, logs, rollback
-
-```bash
-# Release
-sudo -iu onq /srv/onq/app/deploy/deploy.sh
-
-# Logs
-pm2 logs onq-api --lines 100
-pm2 logs onq-web --lines 100
-
-# Rollback (code)
-cd /srv/onq/app && git reset --hard <last-good-sha> && ./deploy/deploy.sh
-# Note: migrations are forward-only; never `migrate reset` — it wipes data.
-```
-
-## 9. After the server is live (product side, not DevOps)
-
-These are follow-ups the product owner handles once the domain answers:
-
-1. **Mobile release builds** — release builds already point at
-   `https://onq.scotitech.com` (dev builds keep using the LAN); rebuild the
-   Android APK / iOS archive and hand the APK to the pilot shop.
-2. **Vercel** — either retire the Vercel deployment or keep it as staging; if
-   kept, set `NEXT_PUBLIC_API_BASE_URL=https://onq.scotitech.com` there and add
-   the Vercel URL to `CORS_ALLOWED_ORIGINS` on the server.
-   **Supabase** — no longer used by anything; pause or delete the project once
-   the pilot's data (if any) has been exported.
-3. **Store push credentials** — APNs key (Apple) + FCM service account
-   (Firebase) uploaded to Expo before store builds ship.
-4. QR counter signs reprint automatically with the production URL from
-   `/ops/shops/<slug>/qr`.
-
-## 10. Known pilot trade-offs (accepted, revisit before scale)
-
-- `PILOT_MODE=true`: OTP codes render on-screen instead of SMS (zero cost; the
-  join flow explains it). Flip to `false` only with an SMS provider configured.
-- Shop/customer photos are stored as small compressed images in Postgres
-  (~40–80 KB each, hard cap 220 KB, max 6 per shop). Move to object storage
-  (e.g. Supabase Storage) before onboarding many shops.
-- An uptime monitor on `/health` (any free service, or a cron on another
-  machine) tells you the moment the site goes down:
-  `*/10 * * * * curl -fsS https://onq.scotitech.com/health > /dev/null`
+- `PILOT_MODE=true`: OTP codes are shown on screen instead of sent by SMS (zero
+  cost; the join screen explains it). Set `false` in `.env` and configure a
+  provider (Twilio/MSG91/WhatsApp) to switch on real SMS.
+- Photos are stored as compressed images in Postgres (~40–80 KB each, 220 KB
+  cap, 6 per shop). Move to object storage before onboarding many shops.
+- Hosting is on-prem: the pilot depends on office power and broadband. Add OnQ
+  to the existing uptime-kuma (`:3030`) so outages surface immediately —
+  monitor `https://onq.scotitech.com/health`.
+- Mobile release builds point at `https://onq.scotitech.com`; dev builds still
+  use the LAN Metro server. Rebuild and redistribute the APK after each release
+  that changes the app itself.
