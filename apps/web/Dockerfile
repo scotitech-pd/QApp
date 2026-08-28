@@ -10,6 +10,10 @@ COPY apps/web ./apps/web
 COPY tsconfig.base.json ./
 ARG NEXT_PUBLIC_API_BASE_URL=https://onq.scotitech.com
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+# Maps key is compiled into the browser bundle (normal for Maps JS); the
+# Google Cloud referrer restriction is what secures it.
+ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=""
+ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 RUN npm run build:web
 
 FROM node:22-alpine
