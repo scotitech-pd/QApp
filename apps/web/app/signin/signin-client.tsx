@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PasswordInput } from "../components/password-input";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -78,7 +79,7 @@ export function SignInClient({ nextPath }: { nextPath: string | null }) {
         </label>
         <label className="field">
           <span>Password</span>
-          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <PasswordInput onChange={(event) => setPassword(event.target.value)} value={password} />
         </label>
         <label className="field">
           <span>Device Name</span>

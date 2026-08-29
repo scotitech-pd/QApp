@@ -45,6 +45,8 @@ declare global {
   }
 }
 
+import { PasswordInput, PasswordRules, passwordMeetsRules } from "../../components/password-input";
+
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 const defaultState: SignupState = {
@@ -320,7 +322,7 @@ export function BusinessSignupForm() {
       return;
     }
 
-    if (formState.password.length < 10) {
+    if (!passwordMeetsRules(formState.password)) {
       setSubmitError("Password must be at least 10 characters.");
       return;
     }
@@ -410,25 +412,22 @@ export function BusinessSignupForm() {
             />
           </label>
           <label className="field">
-            <span>Password (min 10 chars)</span>
-            <input
-              type="password"
-              required
-              minLength={10}
+            <span>Password</span>
+            <PasswordInput
               autoComplete="new-password"
-              value={formState.password}
               onChange={(event) => updateField("password", event.target.value)}
+              required
+              value={formState.password}
             />
           </label>
+          <PasswordRules password={formState.password} />
           <label className="field">
             <span>Confirm Password</span>
-            <input
-              type="password"
-              required
-              minLength={10}
+            <PasswordInput
               autoComplete="new-password"
-              value={formState.passwordConfirm}
               onChange={(event) => updateField("passwordConfirm", event.target.value)}
+              required
+              value={formState.passwordConfirm}
             />
           </label>
           <label className="field">

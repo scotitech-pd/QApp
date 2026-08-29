@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import Svg, { Circle as SvgCircle, Path as SvgPath } from "react-native-svg";
 import {
   ActivityIndicator,
   Animated,
@@ -237,9 +238,11 @@ export function Field({
   editable?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   return (
     <View style={{ gap: 5, marginBottom: space(3) }}>
       <Text style={styles.fieldLabel}>{label}</Text>
+      <View>
       <TextInput
         editable={editable}
         autoCapitalize={autoCapitalize ?? "sentences"}
@@ -251,10 +254,86 @@ export function Field({
         onFocus={() => setFocused(true)}
         placeholder={placeholder}
         placeholderTextColor={colors.neutral500}
-        secureTextEntry={secureTextEntry}
-        style={[styles.input, focused && styles.inputFocused]}
+        secureTextEntry={secureTextEntry && !revealed}
+        style={[styles.input, focused && styles.inputFocused, secureTextEntry ? { paddingRight: 46 } : null]}
         value={value}
       />
+      {secureTextEntry ? (
+        <Pressable
+          accessibilityLabel={revealed ? "Hide password" : "Show password"}
+          hitSlop={10}
+          onPress={() => setRevealed((current) => !current)}
+          style={{ position: "absolute", right: 12, top: 0, bottom: 0, justifyContent: "center" }}
+        >
+          <EyeIcon off={!revealed} />
+        </Pressable>
+      ) : null}
+      </View>
+    </View>
+  );
+}
+
+function EyeIcon({ off }: { off: boolean }) {
+  return (
+    <Svg fill="none" height={20} viewBox="0 0 24 24" width={20}>
+      <SvgPath
+        d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+        stroke={colors.neutral600}
+        strokeWidth={1.7}
+      />
+      <SvgCircle cx={12} cy={12} r={3.1} stroke={colors.neutral600} strokeWidth={1.7} />
+      {off ? <SvgPath d="M4.5 19.5 19.5 4.5" stroke={colors.neutral600} strokeLinecap="round" strokeWidth={1.7} /> : null}
+    </Svg>
+  );
+}
+
+/** Mirrors the API's validatePasswordStrength — keep the two in sync. */
+export const PASSWORD_RULES: Array<{ label: string; test: (password: string) => boolean }> = [
+  { label: "At least 10 characters", test: (password) => password.length >= 10 },
+  { label: "A lowercase letter", test: (password) => /[a-z]/.test(password) },
+  { label: "An uppercase letter", test: (password) => /[A-Z]/.test(password) },
+  { label: "A number", test: (password) => /[0-9]/.test(password) },
+  { label: "A symbol (like ! @ #)", test: (password) => /[^A-Za-z0-9]/.test(password) }
+];
+
+export function passwordMeetsRules(password: string) {
+  return PASSWORD_RULES.every((rule) => rule.test(password));
+}
+
+/** Live checklist that turns green rule by rule as the password is typed. */
+export function PasswordRules({ password }: { password: string }) {
+  return (
+    <View style={{ gap: 6, marginTop: -space(1), marginBottom: space(3) }}>
+      {PASSWORD_RULES.map((rule) => {
+        const ok = rule.test(password);
+        return (
+          <View key={rule.label} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View
+              style={{
+                width: 16,
+                height: 16,
+                borderRadius: 8,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: ok ? colors.success : colors.surfaceAlt,
+                borderWidth: ok ? 0 : 1.5,
+                borderColor: colors.dividerSoft
+              }}
+            >
+              {ok ? <Text style={{ color: "#FFFFFF", fontSize: 10, fontFamily: fonts.bodyBold, lineHeight: 12 }}>✓</Text> : null}
+            </View>
+            <Text
+              style={{
+                fontFamily: ok ? fonts.bodyMedium : fonts.body,
+                fontSize: 12.5,
+                color: ok ? colors.success : colors.neutral600
+              }}
+            >
+              {rule.label}
+            </Text>
+          </View>
+        );
+      })}
     </View>
   );
 }

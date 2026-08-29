@@ -1617,3 +1617,30 @@ code.inline {
 }
 
 .rating-row { color: var(--amber); }
+
+
+/* Password reveal + live rules */
+.pw-wrap { position: relative; display: block; }
+.pw-wrap input { width: 100%; padding-right: 44px; }
+.pw-eye {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 32px; height: 32px;
+  background: none; border: none; cursor: pointer; color: var(--color-muted, #5C6470);
+  border-radius: 8px;
+}
+.pw-eye:hover { background: rgba(89, 128, 166, 0.1); }
+.pw-rules { list-style: none; margin: -0.4rem 0 0.4rem; padding: 0; display: grid; gap: 0.3rem; }
+.pw-rule {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.8rem; color: var(--color-muted, #5C6470);
+  transition: color 160ms ease;
+}
+.pw-rule .pw-dot {
+  width: 15px; height: 15px; border-radius: 50%;
+  display: grid; place-items: center; flex-shrink: 0;
+  border: 1.5px solid rgba(29, 31, 32, 0.2);
+  font-size: 9px; line-height: 1; color: #fff;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.pw-rule.ok { color: #4A7D5F; font-weight: 600; }
+.pw-rule.ok .pw-dot { background: #4A7D5F; border-color: #4A7D5F; }

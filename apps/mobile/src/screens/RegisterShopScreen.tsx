@@ -6,7 +6,7 @@ import { Pressable, Text, View, Platform } from "react-native";
 import { api, type BusinessSignupPayload } from "../api";
 import { colors, fonts, radius, space } from "../theme";
 import { Select } from "../select";
-import { BackLink, Blueprint, Button, Field, Kicker, Note, Screen } from "../ui";
+import { BackLink, Blueprint, Button, Field, Kicker, Note, Screen, PasswordRules, passwordMeetsRules } from "../ui";
 
 const INDUSTRIES: Array<{ key: string; label: string }> = [
   { key: "BARBER", label: "Barber" },
@@ -90,7 +90,7 @@ export function RegisterShopScreen({
     if (!businessName.trim() || !ownerName.trim() || !email.trim() || !mobileNumber.trim()) return "Fill in every field.";
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) return "That email doesn't look right.";
     if (mobileNumber.replace(/\D/g, "").length < 7) return "Enter a valid mobile number.";
-    if (password.length < 10) return "Password needs at least 10 characters.";
+    if (!passwordMeetsRules(password)) return "Your password doesn't meet all the rules yet.";
     if (password !== passwordConfirm) return "Passwords don't match.";
     if (openDays.size === 0) return "Pick at least one open day.";
     if (closesAt <= opensAt) return "Closing time must be after opening time.";
@@ -178,7 +178,8 @@ export function RegisterShopScreen({
         <Field label="Your name" onChangeText={setOwnerName} placeholder="Owner or manager" value={ownerName} />
         <Field autoCapitalize="none" keyboardType="email-address" label="Email (your login)" onChangeText={setEmail} placeholder="you@shop.com" value={email} />
         <Field autoCapitalize="none" keyboardType="phone-pad" label="Mobile number" onChangeText={setMobileNumber} placeholder="+91 98…" value={mobileNumber} />
-        <Field autoCapitalize="none" label="Choose a password (10+ characters)" onChangeText={setPassword} secureTextEntry value={password} />
+        <Field autoCapitalize="none" label="Choose a password" onChangeText={setPassword} secureTextEntry value={password} />
+        <PasswordRules password={password} />
         <Field autoCapitalize="none" label="Confirm password" onChangeText={setPasswordConfirm} secureTextEntry value={passwordConfirm} />
 
         <Text style={{ fontSize: 12, color: "rgba(29, 31, 32, 0.7)", fontFamily: fonts.bodyMedium, marginBottom: 6 }}>What kind of shop?</Text>
