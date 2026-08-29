@@ -377,9 +377,17 @@ export function BusinessSignupForm() {
   return (
     <div className="signup-shell">
       <form className="signup-form" onSubmit={handleSubmit}>
+        <section className="form-card">
+          <header className="form-card-head">
+            <span className="form-step">1</span>
+            <div>
+              <h2>About your shop</h2>
+              <p>What customers will see when they find you.</p>
+            </div>
+          </header>
         <div className="signup-grid">
           <label className="field">
-            <span>Business Name</span>
+            <span>Shop name</span>
             <input
               required
               value={formState.businessName}
@@ -387,7 +395,7 @@ export function BusinessSignupForm() {
             />
           </label>
           <label className="field">
-            <span>Owner Name</span>
+            <span>Owner name</span>
             <input
               required
               value={formState.ownerName}
@@ -395,39 +403,11 @@ export function BusinessSignupForm() {
             />
           </label>
           <label className="field">
-            <span>Mobile Number</span>
+            <span>Mobile number</span>
             <input
               required
               value={formState.mobileNumber}
               onChange={(event) => updateField("mobileNumber", event.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>Email</span>
-            <input
-              type="email"
-              required
-              value={formState.email}
-              onChange={(event) => updateField("email", event.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>Password</span>
-            <PasswordInput
-              autoComplete="new-password"
-              onChange={(event) => updateField("password", event.target.value)}
-              required
-              value={formState.password}
-            />
-          </label>
-          <PasswordRules password={formState.password} />
-          <label className="field">
-            <span>Confirm Password</span>
-            <PasswordInput
-              autoComplete="new-password"
-              onChange={(event) => updateField("passwordConfirm", event.target.value)}
-              required
-              value={formState.passwordConfirm}
             />
           </label>
           <label className="field">
@@ -444,7 +424,7 @@ export function BusinessSignupForm() {
             </select>
           </label>
           <label className="field">
-            <span>Chairs or Stations</span>
+            <span>Chairs or stations</span>
             <input
               type="number"
               min={1}
@@ -453,24 +433,69 @@ export function BusinessSignupForm() {
               onChange={(event) => updateField("serviceStationsCount", event.target.value)}
             />
           </label>
-          <label className="field field-wide">
-            <span>Opening Hours Note</span>
-            <textarea
+          <label className="field">
+            <span>Opening hours</span>
+            <input
               required
-              rows={4}
               value={formState.openingHoursNote}
               onChange={(event) => updateField("openingHoursNote", event.target.value)}
-              placeholder="Mon-Fri 9am-7pm, Sat 9am-6pm, Sun closed"
+              placeholder="Mon–Sat 9am–8pm, Sun closed"
             />
           </label>
         </div>
+        </section>
 
-        <div className="location-card">
-          <div className="location-card-header">
+        <section className="form-card">
+          <header className="form-card-head">
+            <span className="form-step">2</span>
             <div>
-              <h3>Location Confirmation</h3>
-              <p>Mandatory: confirm the exact storefront pin before continuing.</p>
+              <h2>Your sign-in</h2>
+              <p>You'll use this email and password to run the queue.</p>
             </div>
+          </header>
+        <div className="signup-grid">
+          <label className="field">
+            <span>Email</span>
+            <input
+              type="email"
+              required
+              autoComplete="email"
+              value={formState.email}
+              onChange={(event) => updateField("email", event.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>Password</span>
+            <PasswordInput
+              autoComplete="new-password"
+              onChange={(event) => updateField("password", event.target.value)}
+              required
+              value={formState.password}
+            />
+          </label>
+          <PasswordRules password={formState.password} />
+          <label className="field">
+            <span>Confirm password</span>
+            <PasswordInput
+              autoComplete="new-password"
+              onChange={(event) => updateField("passwordConfirm", event.target.value)}
+              required
+              value={formState.passwordConfirm}
+            />
+          </label>
+        </div>
+        </section>
+
+        <section className="form-card location-card">
+          <header className="form-card-head">
+            <span className="form-step">3</span>
+            <div>
+              <h2>Pin your shop</h2>
+              <p>Customers are routed by distance — the pin must be your front door.</p>
+            </div>
+          </header>
+          <div className="location-card-header">
+            <div />
             <div className="location-actions">
               <button className="button" onClick={detectCurrentLocation} type="button">
                 Use Current Location
@@ -545,7 +570,7 @@ export function BusinessSignupForm() {
               {pinConfirmedAt ? "Pin confirmed" : "Pin not confirmed"}
             </span>
           </div>
-        </div>
+        </section>
 
         <details
           className="disclosure"
@@ -596,27 +621,21 @@ export function BusinessSignupForm() {
 
         {submitError ? <p className="status-text warning">{submitError}</p> : null}
 
-        <div className="location-footer">
-          <button className="button primary" disabled={submitting} type="submit">
-            {submitting ? "Submitting..." : "Create Business Signup"}
+        <div className="signup-submit">
+          <button className="auth-submit" disabled={submitting} type="submit">
+            {submitting ? "Submitting…" : "Submit for approval"}
           </button>
+          <p className="auth-footnote">We review every shop by hand — you'll sign in once approved.</p>
         </div>
       </form>
 
       {result ? (
-        <section className="section result-panel">
-          <h2>Pending Signup Created</h2>
+        <section className="form-card result-panel">
+          <h2>Application received ✓</h2>
           <p>
-            Signup <code className="inline">{result.id}</code> has been created with
-            pending approval status.
+            Thanks — your shop is in the review queue. We check every application by hand, usually the
+            same day. Once approved, sign in with the email and password you just chose.
           </p>
-          <ol className="list">
-            <li>Status: {result.approvalStatus}</li>
-            <li>Created at: {result.createdAt}</li>
-            <li>
-              Coordinates: {result.latitude}, {result.longitude}
-            </li>
-          </ol>
         </section>
       ) : null}
     </div>

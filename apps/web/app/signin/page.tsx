@@ -1,24 +1,13 @@
+import type { Metadata } from "next";
+
 import { SignInClient } from "./signin-client";
 
-export default async function SignInPage(props: {
-  searchParams: Promise<{ next?: string }>;
-}) {
+export const metadata: Metadata = {
+  title: "Sign in",
+  description: "Sign in to the OnQ shop portal to manage your queue, customers and earnings."
+};
+
+export default async function SignInPage(props: { searchParams: Promise<{ next?: string }> }) {
   const searchParams = await props.searchParams;
-
-  return (
-    <main className="page-shell">
-      <section className="hero hero-compact">
-        <span className="eyebrow">Shop/Admin Sign In</span>
-        <h1>Manage queues, staff access, and admin reviews.</h1>
-        <p>
-          Customers do not need to sign in to join a queue. This screen is only for shop teams
-          and OnQ admins.
-        </p>
-      </section>
-
-      <section className="section">
-        <SignInClient nextPath={searchParams.next ?? null} />
-      </section>
-    </main>
-  );
+  return <SignInClient nextPath={searchParams.next ?? null} />;
 }

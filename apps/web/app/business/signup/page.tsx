@@ -1,27 +1,24 @@
+import type { Metadata } from "next";
+
 import { BusinessSignupForm } from "./signup-form";
+
+export const metadata: Metadata = {
+  title: "Register your shop",
+  description:
+    "Put your barbershop or salon on OnQ. Customers see your live queue and join from anywhere. Free during the pilot — reviewed by hand, usually the same day."
+};
 
 export default function BusinessSignupPage() {
   return (
-    <main className="page-shell">
-      <section className="hero">
-        <span className="eyebrow">OnQ Business Signup</span>
-        <h1>Register your shop and confirm the exact storefront location.</h1>
+    <main className="auth-page auth-page-wide">
+      <div className="signup-head">
+        <h1>Get your shop on OnQ</h1>
         <p>
-          OnQ uses your saved coordinates for nearby discovery, distance
-          calculations, and future smart-arrival timing. Location confirmation is
-          mandatory before signup can be submitted.
+          Five minutes of setup, reviewed by hand — usually the same day. Free during the pilot:
+          no card, no contract, no per-customer fees.
         </p>
-      </section>
-
-      <section className="section">
-        <h2>Signup Flow</h2>
-        <p>
-          Fill in the business details, detect or search the location, adjust the
-          map pin if needed, then explicitly confirm the final pin before
-          submission.
-        </p>
-        <BusinessSignupForm />
-      </section>
+      </div>
+      <BusinessSignupForm />
     </main>
   );
 }
