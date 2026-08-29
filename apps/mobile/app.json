@@ -2,7 +2,7 @@
   "expo": {
     "name": "OnQ",
     "slug": "q-app",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.scotitech.qapp",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "OnQ connects to your local network to load live queue data during development and testing.",
         "NSAppTransportSecurity": {
@@ -45,7 +45,7 @@
           ]
         }
       ],
-      "versionCode": 2,
+      "versionCode": 3,
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyAbGvtmysnM4EWG_IalA-H8gpfllBMCtXU"

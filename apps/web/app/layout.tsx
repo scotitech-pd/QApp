@@ -6,7 +6,8 @@ import { AppProviders } from "./providers";
 import { ServiceWorkerRegister } from "./sw-register";
 
 export const metadata: Metadata = {
-  title: "OnQ",
+  metadataBase: new URL("https://onq.scotitech.com"),
+  title: { default: "OnQ", template: "%s · OnQ" },
   description: "Real-time queue and smart arrival platform for service businesses.",
   applicationName: "OnQ",
   manifest: "/manifest.webmanifest",

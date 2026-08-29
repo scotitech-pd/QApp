@@ -1644,3 +1644,26 @@ code.inline {
 }
 .pw-rule.ok { color: #4A7D5F; font-weight: 600; }
 .pw-rule.ok .pw-dot { background: #4A7D5F; border-color: #4A7D5F; }
+
+/* Marketing landing page */
+.marketing .hero-footnote { color: var(--color-muted, #5C6470); font-size: 0.82rem; margin-top: 0.6rem; }
+.screens { display: flex; gap: 1.2rem; justify-content: center; flex-wrap: wrap; }
+.screens figure { margin: 0; text-align: center; }
+.screens img {
+  width: min(300px, 82vw); height: auto; border-radius: 22px;
+  box-shadow: 0 10px 34px rgba(29, 31, 32, 0.16); border: 1px solid rgba(29, 31, 32, 0.08);
+}
+.screens figcaption { font-size: 0.85rem; color: var(--color-muted, #5C6470); margin-top: 0.6rem; font-weight: 600; }
+.step-number {
+  display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  background: #5980A6; color: #fff; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem;
+}
+.section-lede { max-width: 56ch; color: var(--color-muted, #5C6470); }
+.trust-list { list-style: none; padding: 0; display: grid; gap: 0.6rem; max-width: 62ch; }
+.trust-list li { padding-left: 1.6rem; position: relative; }
+.trust-list li::before { content: "✓"; position: absolute; left: 0; color: #4A7D5F; font-weight: 700; }
+.marketing-footer { margin-top: 3rem; padding: 1.6rem 0 2.5rem; border-top: 1px solid rgba(29, 31, 32, 0.1); }
+.marketing-footer nav { display: flex; gap: 1.4rem; flex-wrap: wrap; margin-bottom: 0.7rem; }
+.marketing-footer a { color: #416180; font-weight: 600; font-size: 0.88rem; text-decoration: none; }
+.marketing-footer a:hover { text-decoration: underline; }
+.marketing-footer p { color: var(--color-muted, #5C6470); font-size: 0.82rem; max-width: 60ch; }
