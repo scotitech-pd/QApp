@@ -41,25 +41,46 @@ uptime-kuma `3030`.
 | Admin credentials | `/home/hitesh/onq/admin-credentials.txt` — move to a password manager and delete |
 | DB volume | `onq_onq-pgdata` (Docker named volume) |
 
-## Deploying an update
+## Git strategy & automated deployment
 
-From the development Mac, push code to the server's bare repo:
+**`main` is production.** Anything that lands on main deploys automatically.
+Daily work happens on **`developer`**; a pull request into main is the release
+gate.
 
-```bash
-git push server main          # remote: onq-server:onq/repo.git
+```
+developer ──commits──► PR / MR ──merge──► main ──automatically──► production
 ```
 
-Then on the server:
+Two triggers watch main, both calling `~/onq/auto-deploy.sh` on the server
+(flock-guarded, so they never race):
+
+1. **Instant** — `git push server main` hits the bare repo's `post-receive`
+   hook and deploys immediately.
+2. **GitHub poller** — cron fetches `github/main` every 3 minutes; merging a
+   PR on GitHub deploys within ~3 minutes with no SSH involved.
+
+Every deploy is logged to `~/onq/deploy-history.log` with a post-deploy health
+check. The API container runs `prisma migrate deploy` on every start, so schema
+changes apply automatically.
+
+Day-to-day:
 
 ```bash
-cd ~/onq/app
-git pull
-docker compose --env-file .env -f deploy/docker-compose.yml up -d --build
+git checkout developer            # work here
+git commit ...
+git push origin developer
+# open a PR developer -> main on GitHub, merge it
+# ...server deploys itself within 3 minutes
 ```
 
-The API container runs `prisma migrate deploy` on every start, so schema
-changes apply automatically. First build takes 10–15 min; later builds 2–3 min
-thanks to layer caching.
+Emergency direct deploy (bypasses the PR gate — use sparingly):
+
+```bash
+git push server main
+```
+
+Recommended once: protect `main` on GitHub (Settings → Branches → require a
+pull request before merging) so the gate is enforced, not just convention.
 
 ## Operating
 
