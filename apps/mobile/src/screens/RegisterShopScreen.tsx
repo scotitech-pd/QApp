@@ -1,7 +1,7 @@
 import * as Location from "expo-location";
-import MapView, { Marker } from "react-native-maps";
+import { AppleMaps, GoogleMaps } from "expo-maps";
 import React, { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, Platform } from "react-native";
 
 import { api, type BusinessSignupPayload } from "../api";
 import { colors, fonts, radius, space } from "../theme";
@@ -306,34 +306,28 @@ export function RegisterShopScreen({
 
       {coords ? (
         <View style={{ marginTop: space(4), borderRadius: radius.lg, overflow: "hidden" }}>
-          <MapView
-            key={`${coords.source}-${coords.source === "MANUAL_PIN" ? "manual" : "gps"}`}
-            initialRegion={{
-              latitude: coords.latitude,
-              longitude: coords.longitude,
-              latitudeDelta: 0.0035,
-              longitudeDelta: 0.0035
-            }}
-            onPress={(event) => {
-              const { latitude, longitude } = event.nativeEvent.coordinate;
-              setCoords({ latitude, longitude, accuracy: null, source: "MANUAL_PIN" });
-              setConfirmed(false);
-            }}
-            style={{ width: "100%", height: 260 }}
-          >
-            <Marker
-              coordinate={{ latitude: coords.latitude, longitude: coords.longitude }}
-              draggable
-              onDragEnd={(event) => {
-                const { latitude, longitude } = event.nativeEvent.coordinate;
-                setCoords({ latitude, longitude, accuracy: null, source: "MANUAL_PIN" });
-                setConfirmed(false);
-              }}
-            />
-          </MapView>
+          {(() => {
+            const MapComponent = Platform.OS === "ios" ? AppleMaps.View : GoogleMaps.View;
+            return (
+              <MapComponent
+                cameraPosition={{
+                  coordinates: { latitude: coords.latitude, longitude: coords.longitude },
+                  zoom: 18
+                }}
+                markers={[{ coordinates: { latitude: coords.latitude, longitude: coords.longitude } }]}
+                onMapClick={(event) => {
+                  const { latitude, longitude } = event.coordinates;
+                  if (latitude == null || longitude == null) return;
+                  setCoords({ latitude, longitude, accuracy: null, source: "MANUAL_PIN" });
+                  setConfirmed(false);
+                }}
+                style={{ width: "100%", height: 260 }}
+              />
+            );
+          })()}
           <View style={{ backgroundColor: colors.surface, paddingHorizontal: space(3), paddingVertical: space(2) }}>
             <Text style={{ fontFamily: fonts.body, fontSize: 12.5, color: colors.neutral600, textAlign: "center" }}>
-              Drag the pin (or tap the map) until it sits on your front door.
+              Tap the map to move the pin until it sits on your front door.
             </Text>
           </View>
         </View>
