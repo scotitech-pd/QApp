@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 
 import { ApiError } from "./core/api-error";
+import { sendAdminSignupNotification } from "./mailer";
 import { hashPassword, validatePasswordStrength } from "./core/password";
 import { prisma } from "./prisma";
 
@@ -240,6 +241,12 @@ export async function createBusinessSignupRecord(input: NormalizedBusinessSignup
       geolocationCapturedAt: new Date(),
       pinConfirmedAt: input.pinConfirmedAt
     }
+  });
+
+  void sendAdminSignupNotification({
+    businessName: record.businessName,
+    email: record.email,
+    city: record.city
   });
 
   return serializeSignup(record);

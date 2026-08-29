@@ -81,6 +81,9 @@ export function SignInClient({ nextPath }: { nextPath: string | null }) {
           <span>Password</span>
           <PasswordInput onChange={(event) => setPassword(event.target.value)} value={password} />
         </label>
+        <p className="muted" style={{ margin: "-0.4rem 0 0.6rem", fontSize: "0.82rem" }}>
+          <Link href="/forgot-password">Forgot password?</Link>
+        </p>
         <label className="field">
           <span>Device Name</span>
           <input value={deviceName} onChange={(event) => setDeviceName(event.target.value)} />

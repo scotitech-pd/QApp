@@ -3,6 +3,7 @@ import { AppRole, AuthEventType, MembershipRole, SecurityAlertType, SecurityCase
 import { listAuthAuditEvents, recordAuthAuditEvent } from "./auth-audit";
 import { ApiError } from "./core/api-error";
 import { appConfig } from "./core/config";
+import { sendPasswordResetEmail } from "./mailer";
 import { hashPassword, validatePasswordStrength, verifyPassword } from "./core/password";
 import { authRateLimitStore } from "./core/rate-limit";
 import { createAccessToken, createRefreshToken, hashRefreshToken } from "./core/token";
@@ -906,6 +907,12 @@ export async function requestPasswordReset(
       userAgent: context.userAgent
     }
   });
+
+  if (user.email) {
+    // Fire-and-forget: the response must not reveal whether the account exists,
+    // and a slow SMTP server must not block the request.
+    void sendPasswordResetEmail(user.email, buildPasswordResetUrl(rawToken), appConfig.auth.passwordResetTtlMinutes);
+  }
 
   return {
     message: "If the account exists, a password reset link has been prepared.",
