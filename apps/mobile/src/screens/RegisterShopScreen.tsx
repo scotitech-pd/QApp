@@ -1,4 +1,5 @@
 import * as Location from "expo-location";
+import MapView, { Marker } from "react-native-maps";
 import React, { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
@@ -302,6 +303,41 @@ export function RegisterShopScreen({
           <Button disabled={!manualLat || !manualLng} kind="secondary" label="Use these coordinates" onPress={applyManual} small />
         </Blueprint>
       </View>
+
+      {coords ? (
+        <View style={{ marginTop: space(4), borderRadius: radius.lg, overflow: "hidden" }}>
+          <MapView
+            key={`${coords.source}-${coords.source === "MANUAL_PIN" ? "manual" : "gps"}`}
+            initialRegion={{
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              latitudeDelta: 0.0035,
+              longitudeDelta: 0.0035
+            }}
+            onPress={(event) => {
+              const { latitude, longitude } = event.nativeEvent.coordinate;
+              setCoords({ latitude, longitude, accuracy: null, source: "MANUAL_PIN" });
+              setConfirmed(false);
+            }}
+            style={{ width: "100%", height: 260 }}
+          >
+            <Marker
+              coordinate={{ latitude: coords.latitude, longitude: coords.longitude }}
+              draggable
+              onDragEnd={(event) => {
+                const { latitude, longitude } = event.nativeEvent.coordinate;
+                setCoords({ latitude, longitude, accuracy: null, source: "MANUAL_PIN" });
+                setConfirmed(false);
+              }}
+            />
+          </MapView>
+          <View style={{ backgroundColor: colors.surface, paddingHorizontal: space(3), paddingVertical: space(2) }}>
+            <Text style={{ fontFamily: fonts.body, fontSize: 12.5, color: colors.neutral600, textAlign: "center" }}>
+              Drag the pin (or tap the map) until it sits on your front door.
+            </Text>
+          </View>
+        </View>
+      ) : null}
 
       {coords ? (
         <Blueprint style={{ backgroundColor: colors.accent100 }}>

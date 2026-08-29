@@ -45,7 +45,12 @@
           ]
         }
       ],
-      "versionCode": 1
+      "versionCode": 1,
+      "config": {
+        "googleMaps": {
+          "apiKey": "ANDROID_MAPS_KEY_PENDING"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
