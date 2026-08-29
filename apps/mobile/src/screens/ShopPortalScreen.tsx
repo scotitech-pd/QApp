@@ -285,19 +285,19 @@ export function ShopPortalScreen() {
           value={identifier}
         />
         <Field label="Password" onChangeText={setPassword} secureTextEntry value={password} />
-        <Pressable
-          hitSlop={8}
-          onPress={() => void Linking.openURL(`${WEB_BASE_URL}/forgot-password`)}
-          style={{ alignSelf: "flex-start", marginTop: -space(1.5), marginBottom: space(3) }}
-        >
-          <Text style={{ color: colors.accent700, fontFamily: fonts.bodyMedium, fontSize: 13 }}>Forgot password?</Text>
-        </Pressable>
         {error ? (
           <View style={{ marginBottom: space(3) }}>
             <Note tone="danger">{error}</Note>
           </View>
         ) : null}
         <Button blueprint disabled={!identifier.trim() || !password} label="Sign in" loading={busy} onPress={() => void signIn()} />
+        <Pressable
+          hitSlop={8}
+          onPress={() => void Linking.openURL(`${WEB_BASE_URL}/forgot-password`)}
+          style={{ alignSelf: "center", marginTop: space(3) }}
+        >
+          <Text style={{ color: colors.accent700, fontFamily: fonts.bodyMedium, fontSize: 13.5 }}>Forgot password?</Text>
+        </Pressable>
         <View style={{ marginTop: space(5), alignItems: "center", gap: space(1) }}>
           <Note center tone="faint">
             New here? Get your shop on OnQ — free during the pilot.
