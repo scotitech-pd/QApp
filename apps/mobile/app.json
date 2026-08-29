@@ -69,7 +69,8 @@
         {
           "photosPermission": "OnQ uses your photos so you can set a profile picture or shop logo."
         }
-      ]
+      ],
+      "./plugins/with-release-dsym"
     ],
     "scheme": [
       "onq",
