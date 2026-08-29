@@ -1914,3 +1914,15 @@ code.inline {
 .signup-submit .auth-submit { max-width: 380px; margin: 0 auto; }
 .result-panel { text-align: center; }
 .result-panel h2 { color: #4a7d5f; }
+
+/* Pilot access block in hero */
+.mkt-pilot-access {
+  display: flex; gap: 1rem; align-items: center; margin-top: 1rem;
+  background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px; padding: 0.85rem 1rem; max-width: 430px;
+}
+.mkt-pilot-access img { border-radius: 8px; background: #fff; padding: 4px; flex-shrink: 0; }
+.mkt-pilot-access strong { color: #fff; font-size: 0.9rem; display: block; margin-bottom: 0.2rem; }
+.mkt-pilot-access p { margin: 0; font-size: 0.84rem; color: #c6d4e2; line-height: 1.7; }
+.mkt-pilot-access a { color: #ffd48f; font-weight: 600; text-decoration: none; }
+.mkt-pilot-access a:hover { text-decoration: underline; }

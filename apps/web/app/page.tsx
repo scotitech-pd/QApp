@@ -147,13 +147,22 @@ export default function HomePage() {
               exactly when to leave, and walk straight into the chair.
             </p>
             <div className="mkt-badges">
-              <AppStoreBadge />
+              <AppStoreBadge href="https://testflight.apple.com/join/uyPZzv9p" />
               <PlayStoreBadge />
             </div>
-            <p className="mkt-hero-alt">
-              Store listings coming soon · <a href="/downloads/OnQ-latest.apk">direct Android APK</a> for pilot
-              partners · <Link href="/shops">or use OnQ in the browser</Link>
-            </p>
+            <div className="mkt-pilot-access">
+              <img alt="QR code — scan with your phone to download the OnQ Android app" height="96" src="/marketing/apk-qr.png" width="96" />
+              <div>
+                <strong>Pilot access, today</strong>
+                <p>
+                  iOS — <a href="https://testflight.apple.com/join/uyPZzv9p" rel="noopener">join the TestFlight beta</a>
+                  <br />
+                  Android — <a href="https://drive.google.com/file/d/1ThapgGqFraOb3TL5wMOoI-eQYDaDlTa4/view?usp=share_link" rel="noopener">download the APK</a> or scan the code
+                  <br />
+                  No install? <Link href="/shops">Use OnQ in the browser</Link>
+                </p>
+              </div>
+            </div>
             <dl className="mkt-stats">
               <div>
                 <dt>Queue updates</dt>
