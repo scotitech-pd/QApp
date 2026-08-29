@@ -285,6 +285,13 @@ export function ShopPortalScreen() {
           value={identifier}
         />
         <Field label="Password" onChangeText={setPassword} secureTextEntry value={password} />
+        <Pressable
+          hitSlop={8}
+          onPress={() => void Linking.openURL(`${WEB_BASE_URL}/forgot-password`)}
+          style={{ alignSelf: "flex-start", marginTop: -space(1.5), marginBottom: space(3) }}
+        >
+          <Text style={{ color: colors.accent700, fontFamily: fonts.bodyMedium, fontSize: 13 }}>Forgot password?</Text>
+        </Pressable>
         {error ? (
           <View style={{ marginBottom: space(3) }}>
             <Note tone="danger">{error}</Note>
