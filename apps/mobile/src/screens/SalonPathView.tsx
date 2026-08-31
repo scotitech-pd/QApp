@@ -541,8 +541,7 @@ export function SalonPathView({
             {/* Country lane: earth base, soft edges, two faint cart ruts. */}
             <Path d={d} fill="none" stroke="#C4A882" strokeLinecap="round" strokeOpacity={0.55} strokeWidth={26} />
             <Path d={d} fill="none" stroke="#D9C29B" strokeLinecap="round" strokeWidth={20} />
-            <Path d={d} fill="none" stroke="#CBB086" strokeLinecap="round" strokeOpacity={0.75} strokeWidth={3} />
-            <Path d={d} fill="none" stroke="#C0A379" strokeDasharray="10 12" strokeLinecap="round" strokeOpacity={0.5} strokeWidth={2} />
+            <Path d={d} fill="none" stroke="#C0A379" strokeDasharray="12 14" strokeLinecap="round" strokeOpacity={0.4} strokeWidth={2.5} />
             {centers.map(({ xFrac, cy }, index) => (
               <Ellipse
                 cx={xFrac * width}
